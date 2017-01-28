@@ -20,6 +20,7 @@ var rename = require('gulp-rename');
 var commonjs = require('rollup-plugin-commonjs');
 var json = require('rollup-plugin-json');
 var babel = require('rollup-plugin-babel');
+var string = require('rollup-plugin-string');
 
 var outputFilename = argv.o;
 var globals = [];
@@ -57,6 +58,9 @@ gulp.task('umd', task.umd = () => {
                         json({
                             include: [ '**/package.json', 'node_modules/**/*.json' ], 
                             exclude: [  ]
+                        }),
+                        string({
+                            include: '**/*.glsl'
                         }),
                         nodeResolve({
                             skip: skips,

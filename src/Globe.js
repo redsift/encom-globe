@@ -95,10 +95,11 @@ var createParticles = function(){
     this.pointUniforms = {
         currentTime: { type: 'f', value: 0.0}
     }
+//todo: moved
+//         attributes:     pointAttributes,
 
     var pointMaterial = new THREE.ShaderMaterial( {
         uniforms:       this.pointUniforms,
-        attributes:     pointAttributes,
         vertexShader:   pointVertexShader,
         fragmentShader: pointFragmentShader,
         transparent:    true,
@@ -106,42 +107,46 @@ var createParticles = function(){
         side: THREE.DoubleSide
     });
 
-    var triangles = this.tiles.length * 4;
-
     var geometry = new THREE.BufferGeometry();
-
-    geometry.addAttribute( 'index', Uint16Array, triangles * 3, 1 );
-    geometry.addAttribute( 'position', Float32Array, triangles * 3, 3 );
-    geometry.addAttribute( 'normal', Float32Array, triangles * 3, 3 );
-    geometry.addAttribute( 'color', Float32Array, triangles * 3, 3 );
-    geometry.addAttribute( 'lng', Float32Array, triangles * 3, 1 );
-
-    var lng_values = geometry.attributes.lng.array;
-
-    var baseColorSet = pusherColor(this.baseColor).hueSet();
-    var myColors = []; //TODO: Map by height, population etc
-    for(var i = 0; i< baseColorSet.length; i++){
-        myColors.push(baseColorSet[i].shade(Math.random()/3.0));
-    }
 
     // break geometry into
     // chunks of 21,845 triangles (3 unique vertices per triangle)
     // for indices to fit into 16 bit integer number
     // floor(2^16 / 3) = 21845
 
+    var triangles = this.tiles.length * 4;
+    var indices = new Uint16Array(triangles * 3);
+
+    var lng_values = new Float32Array(triangles * 3);
+    var positions = new Float32Array(triangles * 3 * 3);
+    var normals = new Float32Array(triangles * 3 * 3);
+    var colors = new Float32Array(triangles * 3 * 3);
+
+    geometry.setIndex( new THREE.BufferAttribute( indices, 1 ) );
+    geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
+    geometry.addAttribute( 'normal', new THREE.BufferAttribute( normals, 3 ) );
+    geometry.addAttribute( 'color', new THREE.BufferAttribute( colors, 3 ) );
+    geometry.addAttribute( 'lng', new THREE.BufferAttribute( lng_values, 1 ) );
+
+    // geometry.addAttribute( 'index', Uint16Array, triangles * 3, 1 );
+//    geometry.addAttribute( 'position', Float32Array, triangles * 3, 3 );
+//    geometry.addAttribute( 'normal', Float32Array, triangles * 3, 3 );
+//    geometry.addAttribute( 'color', Float32Array, triangles * 3, 3 );
+//    geometry.addAttribute( 'lng', Float32Array, triangles * 3, 1 );
+
+
     var chunkSize = 21845;
-
-    var indices = geometry.attributes.index.array;
-
     for ( var i = 0; i < indices.length; i ++ ) {
 
         indices[ i ] = i % ( 3 * chunkSize );
 
     }
 
-    var positions = geometry.attributes.position.array;
-    var colors = geometry.attributes.color.array;
-
+    var baseColorSet = pusherColor(this.baseColor).hueSet();
+    var myColors = []; //TODO: Map by height, population etc
+    for(var i = 0; i< baseColorSet.length; i++){
+        myColors.push(baseColorSet[i].shade(Math.random()/3.0));
+    }
 
     var n = 800, n2 = n/2;  // triangles spread in the cube
     var d = 12, d2 = d/2;   // individual triangle size
@@ -155,7 +160,7 @@ var createParticles = function(){
         lng_values[p] = lng;
         lng_values[p+1] = lng;
         lng_values[p+2] = lng;
-
+        
         positions[ i ]     = ax;
         positions[ i + 1 ] = ay;
         positions[ i + 2 ] = az;
@@ -202,7 +207,8 @@ var createParticles = function(){
 
     }
 
-    geometry.offsets = [];
+    // todo: commented out
+    // geometry.offsets = [];
 
     var offsets = triangles / chunkSize;
 
@@ -214,12 +220,14 @@ var createParticles = function(){
             count: Math.min( triangles - ( i * chunkSize ), chunkSize ) * 3
         };
 
-        geometry.offsets.push( offset );
+        geometry.groups.push( offset );
 
     }
 
+
     geometry.computeBoundingSphere();
 
+    
     this.hexGrid = new THREE.Mesh( geometry, pointMaterial );
     this.scene.add( this.hexGrid );
 
@@ -323,6 +331,9 @@ function Globe(width, height, opts){
     this.setScale(this.scale);
 
     this.renderer = new THREE.WebGLRenderer( { antialias: true } );
+    // todo: background color below
+    // this.renderer.setClearColor( 0xa50505 );
+    this.renderer.setPixelRatio( window.devicePixelRatio );
     this.renderer.setSize( this.width, this.height);
 
     this.renderer.gammaInput = true;
