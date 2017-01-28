@@ -1,49 +1,51 @@
 var THREE = require('three'),
     TWEEN = require('tween.js'),
+    MeshLine = require('three.meshline'),
     utils = require('./Utils'),
     Defaults = require('./Defaults');
 
-var createMarkerTexture = function(markerColor) {
-    var markerWidth = 32,
-        markerHeight = 32,
-        canvas,
-        texture;
+const PI_2 = 2 * Math.PI;
 
-    canvas =  utils.renderToCanvas(markerWidth, markerHeight, function(ctx) {
-        ctx.fillStyle=markerColor;
-        ctx.strokeStyle=markerColor;
-        ctx.lineWidth=3;
+function createMarkerTexture(marker) {
+    marker = marker || {};
+    marker.size = marker.size || Defaults.Markers.Canvas;
+    marker.color = marker.color || Defaults.Markers.Color;
+    marker.outer = marker.outer || Defaults.Markers.RadiusOuter;
+    marker.inner = marker.inner || Defaults.Markers.RadiusInner;
+    marker.stroke = marker.stroke || Defaults.Markers.StrokeOuter;
+
+    const canvas = utils.renderToCanvas(marker.size, marker.size, function(ctx) {
+        const arcW = marker.size / 2;
+        const arcH = marker.size / 2;
+
+        ctx.fillStyle = marker.color;
+        ctx.strokeStyle = marker.color;
+        ctx.lineWidth = marker.stroke;
         ctx.beginPath();
-        ctx.arc(markerWidth/2, markerHeight/2, markerWidth/3, 0, 2* Math.PI);
+        ctx.arc(arcW, arcH, marker.outer, 0, PI_2);
         ctx.stroke();
         ctx.beginPath();
-        ctx.arc(markerWidth/2, markerHeight/2, markerWidth/5, 0, 2* Math.PI);
+        ctx.arc(arcW, arcH, marker.inner, 0, PI_2);
         ctx.fill();
-
     });
 
-    texture = new THREE.Texture(canvas);
+    const texture = new THREE.CanvasTexture(canvas);
     texture.name = "marker";
-    texture.needsUpdate = true;
-
     return texture;
+}
 
-};
-
-var Marker = function(lat, lon, text, altitude, previous, scene, _opts){
+var Marker = function(lat, lon, text, altitude, previous, scene, near, far, _opts){
 
     /* options that can be passed in */
     var opts = {
         lineColor: "#FFCC00",
         lineWidth: 1,
-        markerColor: "#FFCC00",
         drawTime: 2000,
         lineSegments: 150
     }
 
     var point,
         previousPoint,
-        markerMaterial,
         labelCanvas,
         labelTexture,
         labelMaterial
@@ -79,14 +81,16 @@ var Marker = function(lat, lon, text, altitude, previous, scene, _opts){
         previousPoint = utils.mapPoint(previous.lat, previous.lon);
     }
 
-    if(!scene._encom_markerTexture){
-        scene._encom_markerTexture = createMarkerTexture(this.opts.markerColor);
+    if (!scene.markerTexture){
+        scene.markerTexture = createMarkerTexture({});
     }
 
-    markerMaterial = new THREE.SpriteMaterial({map: scene._encom_markerTexture, opacity: .7, depthTest: true, fog: true});
+    let markerMaterial = new THREE.SpriteMaterial({ map: scene.markerTexture, 
+                                                    opacity: Defaults.Markers.Opacity, 
+                                                    depthTest: true, 
+                                                    fog: true });
     this.marker = new THREE.Sprite(markerMaterial);
-
-    this.marker.scale.set(0, 0);
+    this.marker.scale.set(Defaults.Markers.Canvas / Defaults.Render.PixelRatio, Defaults.Markers.Canvas / Defaults.Render.PixelRatio);
     this.marker.position.set(point.x * altitude, point.y * altitude, point.z * altitude);
 
     labelCanvas = utils.createLabel(text.toUpperCase(), {}, {});
@@ -220,38 +224,69 @@ var Marker = function(lat, lon, text, altitude, previous, scene, _opts){
 
         update();
 
-        this.scene.add(new THREE.Line(_this.geometrySpline, materialSpline));
+//        this.scene.add(new THREE.Line(_this.geometrySpline, materialSpline));
+
+// mesh line
+/*
+        let geometry = new THREE.Geometry();
+        for (let j = 0; j < Math.PI; j += 2 * Math.PI / 100) {
+            let v = new THREE.Vector3(Math.cos(j), Math.sin(j), 0);
+            geometry.vertices.push(v);
+        }
+        */
+        let line = new MeshLine.MeshLine();
+        line.setGeometry(_this.geometrySpline);
+
+        let materialMeshSpline = new MeshLine.MeshLineMaterial({
+            useMap: false,
+            color: new THREE.Color('#fff'),
+            opacity: 1,
+            resolution: new THREE.Vector2(1024, 1024), // should be window height
+            sizeAttenuation: !false,
+            lineWidth: .1 ,
+            near: near,
+            far: far
+        });
+
+        /*
+        materialMeshSpline.color = new THREE.Color('#000');
+        materialMeshSpline.resolution = new THREE.Vector2(1024, 1024);
+        materialMeshSpline.lineWidth = 10;
+        materialMeshSpline.sizeAttenuation = 0;
+        */
+
+        this.scene.add(new THREE.Mesh(line.geometry, materialMeshSpline));
+// end mesh line
+
         this.scene.add(new THREE.LineSegments(_this.geometrySplineDotted, materialSplineDotted));
     }
 
     this.scene.add(this.marker);
     this.scene.add(this.labelSprite);
-
 };
 
-Marker.prototype.remove = function(){
-    var x = 0;
-    var _this = this;
+Marker.prototype.remove = function() {
+    let x = 0;
+    const _this = this;
 
-    var update = function(ref){
+    const update = function (ref) {
 
-        for(var i = 0; i< x; i++){
+        for (let i = 0; i < x; i++){
             ref.geometrySpline.vertices[i].set(ref.geometrySpline.vertices[i+1]);
             ref.geometrySplineDotted.vertices[i].set(ref.geometrySplineDotted.vertices[i+1]);
-            ref.geometrySpline.verticesNeedUpdate = true;
-            ref.geometrySplineDotted.verticesNeedUpdate = true;
         }
-
+        ref.geometrySpline.verticesNeedUpdate = true;
+        ref.geometrySplineDotted.verticesNeedUpdate = true;
         x++;
         if(x < ref.geometrySpline.vertices.length){
-            setTimeout(function(){update(ref)}, _this.opts.drawTime/_this.opts.lineSegments)
+            setTimeout(function(){update(ref)}, _this.opts.drawTime / _this.opts.lineSegments)
         } else {
             _this.scene.remove(ref.geometrySpline);
             _this.scene.remove(ref.geometrySplineDotted);
         }
     }
 
-    for(var j = 0; j< _this.next.length; j++){
+    for (let j = 0; j < _this.next.length; j++){
         (function(k){
             update(_this.next[k]);
         })(j);
@@ -259,7 +294,6 @@ Marker.prototype.remove = function(){
 
     _this.scene.remove(_this.marker);
     _this.scene.remove(_this.labelSprite);
-
 };
 
 module.exports = Marker;

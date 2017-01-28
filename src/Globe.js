@@ -481,11 +481,11 @@ Globe.prototype.addMarker = function(lat, lon, text, connected){
     };
 
     if(typeof connected == "boolean" && connected){
-        marker = new Marker(lat, lon, text, 1.2, this.markers[this.markers.length-1], this.scene, opts);
+        marker = new Marker(lat, lon, text, 1.2, this.markers[this.markers.length-1], this.scene, this.camera.near, this.camera.far, opts);
     } else if(typeof connected == "object"){
-        marker = new Marker(lat, lon, text, 1.2, connected, this.scene, opts);
+        marker = new Marker(lat, lon, text, 1.2, connected, this.scene, this.camera.near, this.camera.far, opts);
     } else {
-        marker = new Marker(lat, lon, text, 1.2, null, this.scene, opts);
+        marker = new Marker(lat, lon, text, 1.2, null, this.scene, this.camera.near, this.camera.far, opts);
     }
 
     this.markers.push(marker);
@@ -571,7 +571,7 @@ Globe.prototype.setBaseColor = function(_color){
 
 Globe.prototype.setMarkerColor = function(_color){
     this.markerColor = _color;
-    this.scene._encom_markerTexture = null;
+    this.scene.markerTexture = null;
 
 };
 
