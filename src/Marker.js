@@ -3,8 +3,8 @@ var THREE = require('three'),
     utils = require('./utils');
 
 var createMarkerTexture = function(markerColor) {
-    var markerWidth = 30,
-        markerHeight = 30,
+    var markerWidth = 32,
+        markerHeight = 32,
         canvas,
         texture;
 
@@ -15,7 +15,6 @@ var createMarkerTexture = function(markerColor) {
         ctx.beginPath();
         ctx.arc(markerWidth/2, markerHeight/2, markerWidth/3, 0, 2* Math.PI);
         ctx.stroke();
-
         ctx.beginPath();
         ctx.arc(markerWidth/2, markerHeight/2, markerWidth/5, 0, 2* Math.PI);
         ctx.fill();
@@ -23,6 +22,7 @@ var createMarkerTexture = function(markerColor) {
     });
 
     texture = new THREE.Texture(canvas);
+    texture.name = "marker";
     texture.needsUpdate = true;
 
     return texture;
@@ -93,18 +93,18 @@ var Marker = function(lat, lon, text, altitude, previous, scene, _opts){
 
     labelCanvas = utils.createLabel(text.toUpperCase(), this.opts.fontSize, this.opts.labelColor, this.opts.font, this.opts.markerColor);
     labelTexture = new THREE.Texture(labelCanvas);
+    labelTexture.name = "marker-label"
     labelTexture.needsUpdate = true;
 
     labelMaterial = new THREE.SpriteMaterial({
         map : labelTexture,
-        useScreenCoordinates: false,
         opacity: 0,
         depthTest: true,
         fog: true
     });
 
     this.labelSprite = new THREE.Sprite(labelMaterial);
-    this.labelSprite.position = {x: point.x * altitude * 1.1, y: point.y*altitude*1.05 + (point.y < 0 ? -15 : 30), z: point.z * altitude * 1.1};
+    this.labelSprite.position.set(point.x * altitude * 1.1, point.y*altitude*1.05 + (point.y < 0 ? -15 : 30), point.z * altitude * 1.1); 
     this.labelSprite.scale.set(labelCanvas.width, labelCanvas.height);
 
     new TWEEN.Tween( {opacity: 0})
@@ -221,7 +221,7 @@ var Marker = function(lat, lon, text, altitude, previous, scene, _opts){
         update();
 
         this.scene.add(new THREE.Line(_this.geometrySpline, materialSpline));
-        this.scene.add(new THREE.Line(_this.geometrySplineDotted, materialSplineDotted, THREE.LinePieces));
+        this.scene.add(new THREE.LineSegments(_this.geometrySplineDotted, materialSplineDotted));
     }
 
     this.scene.add(this.marker);

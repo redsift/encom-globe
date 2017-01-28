@@ -15,7 +15,7 @@ var createCanvas = function(numFrames, pixels, rows, waveStart, numWaves, waveCo
 
     var waveColorRGB = utils.hexToRgb(waveColor);
 
-    return utils.renderToCanvas(numFrames * pixels / rows, pixels * rows, function(ctx){
+    return utils.renderToCanvas(utils.nearestPow2(numFrames * pixels / rows), utils.nearestPow2(pixels * rows), function(ctx){
 
         for(var i = 0; i< numFrames; i++){
             if(i - curRow * cols >= cols){
@@ -180,7 +180,8 @@ var Satellite = function(lat, lon, altitude, scene, _opts, canvas, texture){
 
     if(!canvas){
         this.canvas = createCanvas(numFrames, pixels, rows, waveStart, opts.numWaves, opts.waveColor, opts.coreColor, opts.shieldColor);
-        this.texture = new THREE.Texture(this.canvas)
+        this.texture = new THREE.Texture(this.canvas);
+        this.texture.name = "satellite";
         this.texture.needsUpdate = true;
         repeatAt = Math.floor(numFrames-2*(numFrames-waveStart)/opts.numWaves)+1;
         this.animator = new TextureAnimator(this.texture,rows, numFrames/rows, numFrames, 80, repeatAt); 
@@ -188,6 +189,7 @@ var Satellite = function(lat, lon, altitude, scene, _opts, canvas, texture){
         this.canvas = canvas;
         if(!texture){
             this.texture = new THREE.Texture(this.canvas)
+            this.texture.name = "satellite-c";
             this.texture.needsUpdate = true;
             repeatAt = Math.floor(numFrames-2*(numFrames-waveStart)/opts.numWaves)+1;
             this.animator = new TextureAnimator(this.texture,rows, numFrames/rows, numFrames, 80, repeatAt); 
@@ -260,6 +262,7 @@ Satellite.prototype.changeCanvas = function(numWaves, waveColor, coreColor, shie
 
     this.canvas = createCanvas(numFrames, pixels, rows, waveStart, numWaves, waveColor, coreColor, shieldColor);
     this.texture = new THREE.Texture(this.canvas)
+    this.texture.name = "satellite-z";
     this.texture.needsUpdate = true;
     repeatAt = Math.floor(numFrames-2*(numFrames-waveStart)/numWaves)+1;
     this.animator = new TextureAnimator(this.texture,rows, numFrames/rows, numFrames, 80, repeatAt); 

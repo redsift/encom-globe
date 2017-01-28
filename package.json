@@ -22,7 +22,7 @@
     "hexasphere.js": "*",
     "quadtree2": "https://github.com/redsift/quadtree2.js/tarball/master",
     "vec2": "~1.6.0",
-    "three": "~0.66.2",
+    "three": "~0.84.0",
     "pusher.color": "~0.2.4",
     "tween.js": "~16.6.0"
   },

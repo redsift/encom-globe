@@ -4,8 +4,8 @@ var THREE = require('three'),
 
 
 var createTopCanvas = function(color) {
-    var markerWidth = 20,
-    markerHeight = 20;
+    var markerWidth = 16,
+    markerHeight = 16;
 
     return utils.renderToCanvas(markerWidth, markerHeight, function(ctx){
         ctx.fillStyle=color;
@@ -80,23 +80,24 @@ var Pin = function(lat, lon, text, altitude, scene, smokeProvider, _opts){
 
     labelCanvas = utils.createLabel(text, 18, opts.labelColor, opts.font);
     labelTexture = new THREE.Texture(labelCanvas);
+    labelTexture.name = "pin-label";
     labelTexture.needsUpdate = true;
 
     labelMaterial = new THREE.SpriteMaterial({
-       map : labelTexture,
-       useScreenCoordinates: false,
-       opacity:0,
+       map: labelTexture,
+       opacity: 0,
        depthTest: true,
        fog: true
     });
 
    this.labelSprite = new THREE.Sprite(labelMaterial);
-   this.labelSprite.position = {x: point.x*altitude*1.1, y: point.y*altitude + (point.y < 0 ? -15 : 30), z: point.z*altitude*1.1};
+   this.labelSprite.position.set(point.x*altitude*1.1, point.y*altitude + (point.y < 0 ? -15 : 30), point.z*altitude*1.1);
    this.labelSprite.scale.set(labelCanvas.width, labelCanvas.height);
 
    /* the top */
 
    topTexture = new THREE.Texture(createTopCanvas(opts.topColor));
+   topTexture.name = "pin";
    topTexture.needsUpdate = true;
    topMaterial = new THREE.SpriteMaterial({map: topTexture, depthTest: true, fog: true, opacity: 0});
    this.topSprite = new THREE.Sprite(topMaterial);
@@ -168,7 +169,7 @@ Pin.prototype.changeAltitude = function(altitude){
            _this.topSprite.position.set(point.x * this.altitude, point.y * this.altitude, point.z * this.altitude);
        }
        if(_this.labelVisible){
-           _this.labelSprite.position = {x: point.x*this.altitude*1.1, y: point.y*this.altitude + (point.y < 0 ? -15 : 30), z: point.z*this.altitude*1.1};
+           _this.labelSprite.position.set(point.x*this.altitude*1.1, point.y*this.altitude + (point.y < 0 ? -15 : 30), point.z*this.altitude*1.1);
        }
        _this.lineGeometry.vertices[1].x = point.x * this.altitude;
        _this.lineGeometry.vertices[1].y = point.y * this.altitude;

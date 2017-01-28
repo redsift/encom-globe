@@ -1,9 +1,14 @@
 var utils = {
+    nearestPow2: function(aSize) {
+        var res = Math.pow( 2, Math.round( Math.log( aSize ) / Math.log( 2 ) ) ); 
+        if (res < aSize) return utils.nearestPow2(aSize + 12);
+        return res;
+    },
 
     renderToCanvas: function (width, height, renderFunction) {
         var buffer = document.createElement('canvas');
-        buffer.width = width;
-        buffer.height = height;
+        buffer.width = width; 
+        buffer.height = height; 
         renderFunction(buffer.getContext('2d'));
 
         return buffer;
@@ -46,20 +51,15 @@ var utils = {
 
       var textWidth = context.measureText(text).width;
 
-      canvas.width = textWidth;
-      canvas.height = size + 10;
+      var canvasWidth = Math.max(textWidth, 2); // for the case where text is empty
+      var canvasHeight = size + 10;
 
-      // better if canvases have even heights
-      if(canvas.width % 2){
-          canvas.width++;
+      if (underlineColor){
+          canvasHeight += 30;
       }
-      if(canvas.height % 2){
-          canvas.height++;
-      }
+      canvas.width = utils.nearestPow2(canvasWidth);
+      canvas.height = utils.nearestPow2(canvasHeight);
 
-      if(underlineColor){
-          canvas.height += 30;
-      }
       context.font = size + "pt " + font;
 
       context.textAlign = "center";
@@ -79,11 +79,12 @@ var utils = {
       context.fillText(text, canvas.width / 2, canvas.height / 2);
 
       if(underlineColor){
+          var offset = (canvas.width - canvasWidth) / 2;
           context.strokeStyle=underlineColor;
           context.lineWidth=4;
           context.beginPath();
-          context.moveTo(0, canvas.height-10);
-          context.lineTo(canvas.width-1, canvas.height-10);
+          context.moveTo(offset, canvasHeight-10);
+          context.lineTo(offset+canvasWidth-1, canvasHeight-10);
           context.stroke();
       }
 
