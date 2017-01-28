@@ -178,8 +178,8 @@ var Marker = function(lat, lon, text, altitude, previous, scene, _opts){
                 pointList2.push({lat: nextlat+1, lon: nextlon, index: j});
             }
             // var thisPoint = mapPoint(nextlat, nextlon);
-            sPoint = new THREE.Vector3(startPoint.x*1.2, startPoint.y*1.2, startPoint.z*1.2);
-            sPoint2 = new THREE.Vector3(startPoint.x*1.2, startPoint.y*1.2, startPoint.z*1.2);
+            let sPoint = new THREE.Vector3(startPoint.x*1.2, startPoint.y*1.2, startPoint.z*1.2);
+            let sPoint2 = new THREE.Vector3(startPoint.x*1.2, startPoint.y*1.2, startPoint.z*1.2);
             // sPoint = new THREE.Vector3(thisPoint.x*1.2, thisPoint.y*1.2, thisPoint.z*1.2);
 
             sPoint.globe_index = j;
@@ -192,8 +192,6 @@ var Marker = function(lat, lon, text, altitude, previous, scene, _opts){
 
         currentLat = previous.lat;
         currentLon = previous.lon;
-        currentPoint;
-        currentVert;
 
         update = function(){
             var nextSpot = pointList.shift();
@@ -201,11 +199,11 @@ var Marker = function(lat, lon, text, altitude, previous, scene, _opts){
 
             for(var x = 0; x< _this.geometrySpline.vertices.length; x++){
 
-                currentVert = _this.geometrySpline.vertices[x];
-                currentPoint = utils.mapPoint(nextSpot.lat, nextSpot.lon);
+                let currentVert = _this.geometrySpline.vertices[x];
+                let currentPoint = utils.mapPoint(nextSpot.lat, nextSpot.lon);
 
-                currentVert2 = _this.geometrySplineDotted.vertices[x];
-                currentPoint2 = utils.mapPoint(nextSpot2.lat, nextSpot2.lon);
+                let currentVert2 = _this.geometrySplineDotted.vertices[x];
+                let currentPoint2 = utils.mapPoint(nextSpot2.lat, nextSpot2.lon);
 
                 if(x >= nextSpot.index){
                     currentVert.set(currentPoint.x*1.2, currentPoint.y*1.2, currentPoint.z*1.2);

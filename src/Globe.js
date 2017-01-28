@@ -278,9 +278,14 @@ function Globe(width, height, opts){
     this.satelliteAnimations = [];
     this.satelliteMeshes = [];
     this.satellites = {};
-    this.quadtree = new Quadtree2(new Vec2(180, 360), 5);
+    this.quadtree = new Quadtree2({ size: new Vec2(180, 360), objectLimit: 5 });
     this.active = true;
 
+    // Adding odd hack to work with current packages
+    this.quadtree.setKey('pos', 'pos_');
+    this.quadtree.setKey('rad', 'rad_');
+    // end hack
+    
     var defaults = {
         font: "Inconsolata",
         baseColor: "#ffcc00",
@@ -412,7 +417,7 @@ Globe.prototype.addPin = function(lat, lon, text){
     this.quadtree.addObject(pin);
 
     if(text.length > 0){
-        var collisions = this.quadtree.getCollisionsForObject(pin);
+        var collisions = this.quadtree.getCollidings(pin);
         var collisionCount = 0;
         var tooYoungCount = 0;
         var hidePins = [];

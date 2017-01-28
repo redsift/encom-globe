@@ -6,6 +6,7 @@
   "scripts": {
     "serve": "gulp -o t3-rs-geo serve",
     "build": "gulp -o t3-rs-geo build",
+    "grid": "bin/buildgrid -r 500 -o grid.js -m resources/equirectangle_projection.png",
     "pretest": "npm outdated || true && npm run build",
     "test": "tape 'test/**/*-test.js'",
     "posttest": "eslint index.js src",
@@ -19,7 +20,7 @@
   "license": "MIT",
   "dependencies": {
     "hexasphere.js": "*",
-    "quadtree2": "~0.6.0",
+    "quadtree2": "https://github.com/redsift/quadtree2.js/tarball/master",
     "vec2": "~1.6.0",
     "three": "~0.66.2",
     "pusher.color": "~0.2.4",
