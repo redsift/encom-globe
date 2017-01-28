@@ -27,6 +27,7 @@ var latLon2d = function(lat,lon){
 
 
 var addInitialData = function(){
+    let next = null;
     if(this.data.length == 0){
         return;
     }

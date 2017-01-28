@@ -19,12 +19,10 @@
         <link href="styles.css" rel="stylesheet" type="text/css" />
 
         <!-- required for the application -->
-        <script src="data.js"></script>
-        <script src="grid.js"></script>
+        <script src="/data.js"></script>
+        <script src="/grid.js"></script>
 
-        <!-- ref:js build/encom-globe.min.js -->
-        <script src="build/encom-globe.js"></script>
-        <!-- endref -->
+        <script src="/t3-rs-geo.umd-es2015.js"></script>
 
         <script>
 
@@ -40,7 +38,7 @@
                     newData = data.slice();
                 }
 
-                globe = new ENCOM.Globe(window.innerWidth, window.innerHeight, {
+                globe = new t3_rs_geo.ENCOM(window.innerWidth, window.innerHeight, {
                     font: "Inconsolata",
                     data: newData, // copy the data array
                     tiles: grid.tiles,
@@ -218,15 +216,15 @@
             $(function() {
                 var open = false;
 
-
+/* TODO Fill
                 if(!Detector.webgl)
                 {
                     Detector.addGetWebGLMessage({parent: document.getElementById("container")});
                     return;
                 }
-
+*/
                 window.addEventListener( 'resize', onWindowResize, false );
-
+/*
                 $("#globe-color").spectrum({
                     color: "#ffcc00",
                     showButtons: false,
@@ -273,7 +271,7 @@
                     }
 
                 }); 
-
+*/
                 $("[data-slider]")
                 .each(function () {
                     var input = $(this);
@@ -288,9 +286,9 @@
                         .nextAll(".slider-output:first")
                         .html(data.value.toFixed(3));
                         });
-
+/*
                 $(":checkbox").switchButton();
-
+*/
                 $("#globe-scale").bind("slider:changed", function (event, data) {
                     if(globe){
                         globe.setScale(data.value);

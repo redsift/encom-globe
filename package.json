@@ -1,33 +1,50 @@
 {
   "name": "encom-globe",
-  "version": "0.5.4",
+  "version": "0.6.0",
   "description": "encom-globe",
   "main": "src/Globe.js",
-  "devDependencies": {
-    "minimist": "0.0.8",
-    "grunt": "~0.4.2",
-    "grunt-contrib-watch": "~0.5.3",
-    "grunt-shell": "~0.6.4",
-    "browserify": "~3.41.0",
-    "grunt-browserify": "~2.0.7",
-    "pngjs": "~0.4.0",
-    "grunt-contrib-uglify": "~0.4.0"
-  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "serve": "gulp -o t3-rs-geo serve",
+    "build": "gulp -o t3-rs-geo build",
+    "pretest": "npm outdated || true && npm run build",
+    "test": "tape 'test/**/*-test.js'",
+    "posttest": "eslint index.js src",
+    "prepublish": "npm run build"
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/arscan/encom-globe.git"
+    "url": "https://github.com/redsift/encom-globe.git"
   },
   "author": "robscanlon@gmail.com",
   "license": "MIT",
   "dependencies": {
     "hexasphere.js": "*",
-    "quadtree2": "~0.5.3",
-    "vec2": "~1.5.0",
+    "quadtree2": "~0.6.0",
+    "vec2": "~1.6.0",
     "three": "~0.66.2",
     "pusher.color": "~0.2.4",
     "tween.js": "~0.13.0"
-  }
+  },
+  "devDependencies": {
+    "@redsift/tape-reel": "~0.1.0",
+    "browser-sync": "^2.14.0",
+    "del": "^2.2.2",
+    "eslint": "^3.3.1",
+    "gulp": "^3.9.1",
+    "gulp-rename": "^1.2.2",
+    "gulp-sourcemaps": "^2.0.0-alpha",
+    "gulp-uglify": "^2.0.0",
+    "gulp-util": "^3.0.7",
+    "rollup": "^0.34.10",
+    "rollup-plugin-node-resolve": "^2.0.0",
+    "rollup-plugin-commonjs": "^3.3.0",
+    "rollup-plugin-buble": "^0.13.0",
+    "rollup-plugin-json": "^2.0.0",
+    "rollup-stream": "^1.11.0",
+    "vinyl-buffer": "^1.0.0",
+    "vinyl-source-stream": "^1.1.0",
+    "yargs": "^5.0.0",    
+    "minimist": "0.0.8",
+    "pngjs": "~0.4.0"
+  }  
 }
