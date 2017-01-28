@@ -12,7 +12,6 @@ var util = require('gulp-util');
 var rollup = require('rollup-stream'); 
 var uglify = require('gulp-uglify');
 var browserSync = require('browser-sync').create();
-var buble = require('rollup-plugin-buble');
 var nodeResolve = require('rollup-plugin-node-resolve');
 var sourcemaps = require('gulp-sourcemaps');
 var source = require('vinyl-source-stream');
@@ -20,6 +19,7 @@ var buffer = require('vinyl-buffer');
 var rename = require('gulp-rename');
 var commonjs = require('rollup-plugin-commonjs');
 var json = require('rollup-plugin-json');
+var babel = require('rollup-plugin-babel');
 
 var outputFilename = argv.o;
 var globals = [];
@@ -55,7 +55,7 @@ gulp.task('umd', task.umd = () => {
             sourceMap: true,
             plugins: [ 
                         json({
-                            include: [ '**/package.json' , 'node_modules/**/*.json' ], 
+                            include: [ '**/package.json', 'node_modules/**/*.json' ], 
                             exclude: [  ]
                         }),
                         nodeResolve({
@@ -77,10 +77,12 @@ gulp.task('umd', task.umd = () => {
                             preferBuiltins: false  // Default: true
                         }),
                         commonjs(), 
-                        buble() 
+                        babel({
+                            exclude: ['node_modules/**', 'tiles/**']
+                        }) 
                         ]
         })
-        .pipe(source('main.js', './src'))
+        .pipe(source('index.js', './src'))
         .pipe(buffer())
         .pipe(sourcemaps.init({ loadMaps: true }))
         .pipe(rename({basename: outputFilename}))
@@ -95,7 +97,7 @@ gulp.task('umd', task.umd = () => {
 gulp.task('browser-sync', function() {
     browserSync.init({
         server: {
-            baseDir: [ './examples', './distribution', './tiles' ],
+            baseDir: [ './examples', './distribution' ],
             directory: true
         }
     });

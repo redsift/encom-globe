@@ -13,8 +13,7 @@
         <link href="styles.css" rel="stylesheet" type="text/css" />
 
         <!-- required for the application -->
-        <script src="/data.js"></script>
-        <script src="/grid.js"></script>
+        <script src="data.js"></script>
 
         <script src="/t3-rs-geo.umd-es2015.js"></script>
 
@@ -35,7 +34,7 @@
                 globe = new t3_rs_geo.ENCOM(window.innerWidth, window.innerHeight, {
                     font: "Inconsolata",
                     data: newData, // copy the data array
-                    tiles: grid.tiles,
+                    tiles: t3_rs_geo.GRID.tiles,
                     baseColor: $("#globe-color").val(),
                     markerColor: $("#marker-color").val(),
                     pinColor: $("#pin-color").val(),

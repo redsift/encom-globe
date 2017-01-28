@@ -90,7 +90,7 @@ fs.createReadStream(map)
             }
         }
 
-        var output = "var grid = " + JSON.stringify(o) + ";";
+        var output = "export const tiles = " + JSON.stringify(o) + ";";
 
         if(argv.o){
             var fs = require('fs');
