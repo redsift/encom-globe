@@ -9,7 +9,7 @@ var createMarkerTexture = function(markerColor) {
         canvas,
         texture;
 
-    canvas =  utils.renderToCanvas(markerWidth, markerHeight, function(ctx){
+    canvas =  utils.renderToCanvas(markerWidth, markerHeight, function(ctx) {
         ctx.fillStyle=markerColor;
         ctx.strokeStyle=markerColor;
         ctx.lineWidth=3;

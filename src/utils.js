@@ -24,15 +24,6 @@ export function nearestPow2(aSize) {
     return res;
 }
 
-export function renderToCanvas(width, height, renderFunction) {
-    var buffer = document.createElement('canvas');
-    buffer.width = width; 
-    buffer.height = height; 
-    renderFunction(buffer.getContext('2d'));
-
-    return buffer;
-}
-
 export function mapPoint(lat, lng, scale) {
     if(!scale){
         scale = 500;
@@ -43,6 +34,21 @@ export function mapPoint(lat, lng, scale) {
     var y = scale * Math.cos(phi);
     var z = scale * Math.sin(phi) * Math.sin(theta);
     return {x: x, y: y, z:z};
+}
+
+
+export function renderToCanvas(width, height, renderFunction) {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+
+    canvas.width = width * CONST.PixelRatio; 
+    canvas.height = height * CONST.PixelRatio; 
+   
+    context.scale(CONST.PixelRatio, CONST.PixelRatio);
+
+    renderFunction(context);
+
+    return canvas;
 }
 
 export function createLabel(text, font, underline, background) {
