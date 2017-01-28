@@ -119,7 +119,7 @@ var createParticles = function(){
     var lng_values = geometry.attributes.lng.array;
 
     var baseColorSet = pusherColor(this.baseColor).hueSet();
-    var myColors = [];
+    var myColors = []; //TODO: Map by height, population etc
     for(var i = 0; i< baseColorSet.length; i++){
         myColors.push(baseColorSet[i].shade(Math.random()/3.0));
     }
@@ -285,7 +285,7 @@ function Globe(width, height, opts){
     this.quadtree.setKey('pos', 'pos_');
     this.quadtree.setKey('rad', 'rad_');
     // end hack
-    
+
     var defaults = {
         font: "Inconsolata",
         baseColor: "#ffcc00",
