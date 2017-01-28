@@ -2,14 +2,16 @@ import {
     BufferGeometry, BufferAttribute, ShaderMaterial, Points, Color
 } from 'three';
 
+import { SmokeProvider as CONST } from './Defaults'
+
 import fragmentShader from './shaders/SmokeFragment.glsl'
 import vertexShader from './shaders/SmokeVertex.glsl'
 
 function SmokeProvider(scene, _opts) {
     var opts = {
-        smokeCount: 5000,
-        smokePerPin: 30,
-        smokePerSecond: 20
+        smokeCount: CONST.Count,
+        smokePerPin: CONST.PerPin,
+        smokePerSecond: CONST.PerSecond
     }
 
     if(_opts){
@@ -40,7 +42,7 @@ function SmokeProvider(scene, _opts) {
 
     this.uniforms = {
         currentTime: { type: 'f', value: 0.0 },
-        color: { type: 'c', value: new Color('#aaa') },
+        color: { type: 'c', value: new Color(CONST.Color) },
     }
 
     var material = new ShaderMaterial( {
@@ -63,8 +65,8 @@ SmokeProvider.prototype.color = function (value) {
 SmokeProvider.prototype.setFire = function (lat, lon, altitude) {
     var startSmokeIndex = this.smokeIndex;
 
-    for(let p = 0; p< this.opts.smokePerPin; p++){
-        this.myStartTime[this.smokeIndex] = this.totalRunTime + (1000*p/this.opts.smokePerSecond + 1500);
+    for(let i = 0; i < this.opts.smokePerPin; i++){
+        this.myStartTime[this.smokeIndex] = this.totalRunTime + (1000*i / this.opts.smokePerSecond + 1500);
         this.myStartLat[this.smokeIndex] = lat;
         this.myStartLon[this.smokeIndex] = lon;
         this.altitude[this.smokeIndex] = altitude;
