@@ -2,7 +2,7 @@ import {
     BufferGeometry, BufferAttribute, ShaderMaterial, Points, Color
 } from 'three';
 
-import { SmokeProvider as CONST } from './Defaults'
+import { Smoke as CONST } from './Defaults'
 
 import fragmentShader from './shaders/SmokeFragment.glsl'
 import vertexShader from './shaders/SmokeVertex.glsl'

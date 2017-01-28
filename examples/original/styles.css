@@ -1,9 +1,10 @@
+@import url('https://fonts.googleapis.com/css?family=Raleway:300');
 
 /* 775 by 363 */
 
 body {
     background-color: #000000;
-    font-family: 'Inconsolata', sans-serif;
+    font-family: 'Raleway', sans-serif;
     color: #fff;
     font-size: 8pt;
     margin: 0;

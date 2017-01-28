@@ -1,6 +1,7 @@
 var THREE = require('three'),
     TWEEN = require('tween.js'),
-    utils = require('./utils');
+    utils = require('./Utils'),
+    Defaults = require('./Defaults');
 
 var createMarkerTexture = function(markerColor) {
     var markerWidth = 32,
@@ -36,9 +37,6 @@ var Marker = function(lat, lon, text, altitude, previous, scene, _opts){
         lineColor: "#FFCC00",
         lineWidth: 1,
         markerColor: "#FFCC00",
-        labelColor: "#FFF",
-        font: "Inconsolata",
-        fontSize: 20,
         drawTime: 2000,
         lineSegments: 150
     }
@@ -91,7 +89,7 @@ var Marker = function(lat, lon, text, altitude, previous, scene, _opts){
     this.marker.scale.set(0, 0);
     this.marker.position.set(point.x * altitude, point.y * altitude, point.z * altitude);
 
-    labelCanvas = utils.createLabel(text.toUpperCase(), this.opts.fontSize, this.opts.labelColor, this.opts.font, this.opts.markerColor);
+    labelCanvas = utils.createLabel(text.toUpperCase(), {}, {});
     labelTexture = new THREE.Texture(labelCanvas);
     labelTexture.name = "marker-label"
     labelTexture.needsUpdate = true;
@@ -105,7 +103,7 @@ var Marker = function(lat, lon, text, altitude, previous, scene, _opts){
 
     this.labelSprite = new THREE.Sprite(labelMaterial);
     this.labelSprite.position.set(point.x * altitude * 1.1, point.y*altitude*1.05 + (point.y < 0 ? -15 : 30), point.z * altitude * 1.1); 
-    this.labelSprite.scale.set(labelCanvas.width, labelCanvas.height);
+    this.labelSprite.scale.set(labelCanvas.width / Defaults.Render.PixelRatio, labelCanvas.height / Defaults.Render.PixelRatio);
 
     new TWEEN.Tween( {opacity: 0})
     .to( {opacity: 1}, 500 )
@@ -146,7 +144,7 @@ var Marker = function(lat, lon, text, altitude, previous, scene, _opts){
         materialSpline = new THREE.LineBasicMaterial({
             color: this.opts.lineColor,
             transparent: true,
-            linewidth: 3,
+            linewidth: 6,
             opacity: .5
         });
 
@@ -209,9 +207,11 @@ var Marker = function(lat, lon, text, altitude, previous, scene, _opts){
                     currentVert.set(currentPoint.x*1.2, currentPoint.y*1.2, currentPoint.z*1.2);
                     currentVert2.set(currentPoint2.x*1.19, currentPoint2.y*1.19, currentPoint2.z*1.19);
                 }
-                _this.geometrySpline.verticesNeedUpdate = true;
-                _this.geometrySplineDotted.verticesNeedUpdate = true;
             }
+            
+            _this.geometrySpline.verticesNeedUpdate = true;
+            _this.geometrySplineDotted.verticesNeedUpdate = true;
+
             if(pointList.length > 0){
                 setTimeout(update,_this.opts.drawTime/_this.opts.lineSegments);
             }

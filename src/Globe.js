@@ -8,7 +8,8 @@ var TWEEN = require('tween.js'),
     Satellite = require('./Satellite'),
     SmokeProvider = require('./SmokeProvider'),
     pusherColor = require('pusher.color'),
-    utils = require('./utils');
+    utils = require('./Utils'),
+    Defaults = require('./Defaults');
 
 var latLonToXYZ = function(width, height, lat,lon){
 
@@ -333,7 +334,7 @@ function Globe(width, height, opts){
     this.renderer = new THREE.WebGLRenderer( { antialias: true } );
     // todo: background color below
     // this.renderer.setClearColor( 0xa50505 );
-    this.renderer.setPixelRatio( window.devicePixelRatio );
+    this.renderer.setPixelRatio( Defaults.Render.PixelRatio );
     this.renderer.setSize( this.width, this.height);
 
     this.renderer.gammaInput = true;

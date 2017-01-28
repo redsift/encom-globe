@@ -1,6 +1,7 @@
 var THREE = require('three'),
     TWEEN = require('tween.js'),
-    utils = require('./utils');
+    utils = require('./Utils'),
+    Defaults = require('./Defaults');
 
 
 var createTopCanvas = function(color) {
@@ -24,8 +25,6 @@ var Pin = function(lat, lon, text, altitude, scene, smokeProvider, _opts){
         lineWidth: 1,
         topColor: "#8FD8D8",
         smokeColor: "#FFF",
-        labelColor: "#FFF",
-        font: "Inconsolata",
         showLabel: (text.length > 0),
         showTop: (text.length > 0),
         showSmoke: (text.length > 0)
@@ -78,7 +77,7 @@ var Pin = function(lat, lon, text, altitude, scene, smokeProvider, _opts){
 
     /* the label */
 
-    labelCanvas = utils.createLabel(text, 18, opts.labelColor, opts.font);
+    labelCanvas = utils.createLabel(text, { size: 18 });
     labelTexture = new THREE.Texture(labelCanvas);
     labelTexture.name = "pin-label";
     labelTexture.needsUpdate = true;
@@ -92,7 +91,7 @@ var Pin = function(lat, lon, text, altitude, scene, smokeProvider, _opts){
 
    this.labelSprite = new THREE.Sprite(labelMaterial);
    this.labelSprite.position.set(point.x*altitude*1.1, point.y*altitude + (point.y < 0 ? -15 : 30), point.z*altitude*1.1);
-   this.labelSprite.scale.set(labelCanvas.width, labelCanvas.height);
+   this.labelSprite.scale.set(labelCanvas.width / Defaults.Render.PixelRatio, labelCanvas.height / Defaults.Render.PixelRatio);
 
    /* the top */
 

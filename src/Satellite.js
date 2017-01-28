@@ -1,6 +1,6 @@
 var TextureAnimator = require('./TextureAnimator'),
     THREE = require('three'),
-    utils = require('./utils');
+    utils = require('./Utils');
 
 
 var createCanvas = function(numFrames, pixels, rows, waveStart, numWaves, waveColor, coreColor, shieldColor) {
@@ -14,8 +14,8 @@ var createCanvas = function(numFrames, pixels, rows, waveStart, numWaves, waveCo
     var curRow = 0;
 
     var waveColorRGB = utils.hexToRgb(waveColor);
-
-    return utils.renderToCanvas(utils.nearestPow2(numFrames * pixels / rows), utils.nearestPow2(pixels * rows), function(ctx){
+//TODO: This size if not pow(2), need utils.nearestPow2
+    return utils.renderToCanvas((numFrames * pixels / rows), (pixels * rows), function(ctx){
 
         for(var i = 0; i< numFrames; i++){
             if(i - curRow * cols >= cols){
