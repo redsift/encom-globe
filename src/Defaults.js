@@ -1,9 +1,17 @@
 const Colors = {
-    Markers: '#ffcc00'
+    Markers: '#ffcc00',
+    _Highlight: '#ff0000'
 };
 
 export const Render = {
     PixelRatio: window.devicePixelRatio
+};
+
+export const Lines = {
+    Color: Colors.Markers,
+    Segments: 150,
+    Opacity: 0.7,
+    Width: 10    
 };
 
 export const Labels = {
@@ -18,16 +26,19 @@ export const Labels = {
     UnderlineOffset: 4,
     UnderlineColor: Colors.Markers,
     UnderlineCap: 'square',
-    BackgroundFillStyle: '#eee'
+    BackgroundFillStyle: '#eee',
+    Fade_MS: 2000
 };
 
 export const Markers = {
     Color: Colors.Markers,
     Opacity: 0.85,
-    Canvas: 32, // show be a pow(2) and large enough for the below
+    Canvas: 64, // show be a pow(2) and large enough for the below
     StrokeOuter: 3,
-    RadiusInner: 7,
-    RadiusOuter: 11
+    RadiusInner: 14,
+    RadiusOuter: 22,
+    Delay_MS: Labels.Fade_MS, // bounces in after text
+    Scale_MS: 2000
 }
 
 export const Smoke = {
