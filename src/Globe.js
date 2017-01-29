@@ -1,50 +1,46 @@
-var TWEEN = require('tween.js'),
-    THREE = require('three'),
-    Hexasphere = require('hexasphere.js'),
-    Quadtree2 = require('quadtree2'),
-    Vec2 = require('vec2'),
-    Pin = require('./Pin'),
-    Marker = require('./Marker'),
-    Satellite = require('./Satellite'),
-    SmokeProvider = require('./SmokeProvider'),
-    pusherColor = require('pusher.color'),
-    utils = require('./Utils'),
-    Defaults = require('./Defaults');
+'use strict'
 
-var latLonToXYZ = function(width, height, lat,lon){
+import {
+    ShaderMaterial, VertexColors, DoubleSide, BufferGeometry, BufferAttribute,
+    PerspectiveCamera, Scene, Fog, Color, Mesh, LineBasicMaterial, Geometry,
+    Vector3, Line, Object3D, WebGLRenderer
+} from 'three';
 
-    var x = Math.floor(width/2.0 + (width/360.0)*lon);
-    var y = Math.floor((height/2.0 + (height/180.0)*lat));
+import TWEEN from 'tween.js'
+import pusherColor from 'pusher.color' // TODO: replace this one
+import Quadtree2 from 'quadtree2'
+import Vec2 from 'vec2'
 
-    return {x: x, y:y};
-};
+import { latLon2d, mapPoint } from './Utils'
+import { Render, View } from './Defaults'
 
-var latLon2d = function(lat,lon){
+import Satellite from './Satellite'
+import { default as Marker } from './Marker'
+import { default as Pin } from './Pin'
+import { default as SmokeProvider } from './SmokeProvider'
 
-    var rad = 2 + (Math.abs(lat)/90) * 15;
-    return {x: lat+90, y:lon + 180, rad: rad};
-};
+// break geometry into
+// chunks of 21,845 triangles (3 unique vertices per triangle)
+// for indices to fit into 16 bit integer number
+// floor(2^16 / 3) = 21845
+const chunkSize = 21845;
 
-
-
-var addInitialData = function(){
+function addInitialData() {
     let next = null;
-    if(this.data.length == 0){
+    if (this.data.length == 0){
         return;
     }
-    while(this.data.length > 0 && this.firstRunTime + (next = this.data.pop()).when < Date.now()){
+    while (this.data.length > 0 && this.firstRunTime + (next = this.data.pop()).when < Date.now()){
         this.addPin(next.lat, next.lng, next.label);
     }
 
-    if(this.firstRunTime + next.when >= Date.now()){
+    if (this.firstRunTime + next.when >= Date.now()){
         this.data.push(next);
     }
-};
+}
 
-
-var createParticles = function(){
-
-    if(this.hexGrid){
+function createParticles() {
+    if (this.hexGrid){
         this.scene.remove(this.hexGrid);
     }
 
@@ -89,74 +85,49 @@ var createParticles = function(){
         "}"
     ].join("\n");
 
-    var pointAttributes = {
-        lng: {type: 'f', value: null}
-    };
-
     this.pointUniforms = {
         currentTime: { type: 'f', value: 0.0}
     }
-//todo: moved
-//         attributes:     pointAttributes,
 
-    var pointMaterial = new THREE.ShaderMaterial( {
+    const pointMaterial = new ShaderMaterial( {
         uniforms:       this.pointUniforms,
         vertexShader:   pointVertexShader,
         fragmentShader: pointFragmentShader,
         transparent:    true,
-        vertexColors: THREE.VertexColors,
-        side: THREE.DoubleSide
+        vertexColors: VertexColors,
+        side: DoubleSide
     });
 
-    var geometry = new THREE.BufferGeometry();
+    const geometry = new BufferGeometry();
 
-    // break geometry into
-    // chunks of 21,845 triangles (3 unique vertices per triangle)
-    // for indices to fit into 16 bit integer number
-    // floor(2^16 / 3) = 21845
+    const triangles = this.tiles.length * 4;
+    const indices = new Uint16Array(triangles * 3);
 
-    var triangles = this.tiles.length * 4;
-    var indices = new Uint16Array(triangles * 3);
+    const lng_values = new Float32Array(triangles * 3);
+    const positions = new Float32Array(triangles * 3 * 3);
+    const normals = new Float32Array(triangles * 3 * 3);
+    const colors = new Float32Array(triangles * 3 * 3);
 
-    var lng_values = new Float32Array(triangles * 3);
-    var positions = new Float32Array(triangles * 3 * 3);
-    var normals = new Float32Array(triangles * 3 * 3);
-    var colors = new Float32Array(triangles * 3 * 3);
-
-    geometry.setIndex( new THREE.BufferAttribute( indices, 1 ) );
-    geometry.addAttribute( 'position', new THREE.BufferAttribute( positions, 3 ) );
-    geometry.addAttribute( 'normal', new THREE.BufferAttribute( normals, 3 ) );
-    geometry.addAttribute( 'color', new THREE.BufferAttribute( colors, 3 ) );
-    geometry.addAttribute( 'lng', new THREE.BufferAttribute( lng_values, 1 ) );
-
-    // geometry.addAttribute( 'index', Uint16Array, triangles * 3, 1 );
-//    geometry.addAttribute( 'position', Float32Array, triangles * 3, 3 );
-//    geometry.addAttribute( 'normal', Float32Array, triangles * 3, 3 );
-//    geometry.addAttribute( 'color', Float32Array, triangles * 3, 3 );
-//    geometry.addAttribute( 'lng', Float32Array, triangles * 3, 1 );
+    geometry.setIndex( new BufferAttribute( indices, 1 ) );
+    geometry.addAttribute( 'position', new BufferAttribute( positions, 3 ) );
+    geometry.addAttribute( 'normal', new BufferAttribute( normals, 3 ) );
+    geometry.addAttribute( 'color', new BufferAttribute( colors, 3 ) );
+    geometry.addAttribute( 'lng', new BufferAttribute( lng_values, 1 ) );
 
 
-    var chunkSize = 21845;
-    for ( var i = 0; i < indices.length; i ++ ) {
-
-        indices[ i ] = i % ( 3 * chunkSize );
-
+    for (let i = 0; i < indices.length; i++) {
+        indices[i] = i % (3*chunkSize);
     }
 
-    var baseColorSet = pusherColor(this.baseColor).hueSet();
-    var myColors = []; //TODO: Map by height, population etc
-    for(var i = 0; i< baseColorSet.length; i++){
+    const baseColorSet = pusherColor(this.baseColor).hueSet();
+    const myColors = []; //TODO: Map by height, population etc
+    for (let i = 0; i< baseColorSet.length; i++){
         myColors.push(baseColorSet[i].shade(Math.random()/3.0));
     }
 
-    var n = 800, n2 = n/2;  // triangles spread in the cube
-    var d = 12, d2 = d/2;   // individual triangle size
-
-    var addTriangle = function(k, ax, ay, az, bx, by, bz, cx, cy, cz, lat, lng, color){
-        var p = k * 3;
-        var i = p * 3;
-        var colorIndex = Math.floor(Math.random()*myColors.length);
-        var colorRGB = myColors[colorIndex].rgb();
+    const addTriangle = (k, ax, ay, az, bx, by, bz, cx, cy, cz, lat, lng, color) => {
+        const p = k * 3;
+        const i = p * 3;
 
         lng_values[p] = lng;
         lng_values[p+1] = lng;
@@ -188,13 +159,13 @@ var createParticles = function(){
 
     };
 
-    for(var i =0; i< this.tiles.length; i++){
-        var t = this.tiles[i];
-        var k = i * 4;
+    for (let i = 0; i < this.tiles.length; i++){
+        const t = this.tiles[i];
+        const k = i * 4;
 
-        var colorIndex = Math.floor(Math.random()*myColors.length);
-        var colorRGB = myColors[colorIndex].rgb();
-        var color = new THREE.Color();
+        const colorIndex = Math.floor(Math.random()*myColors.length);
+        const colorRGB = myColors[colorIndex].rgb();
+        const color = new Color();
 
         color.setRGB(colorRGB[0]/255.0, colorRGB[1]/255.0, colorRGB[2]/255.0);
 
@@ -210,78 +181,68 @@ var createParticles = function(){
 
     // todo: commented out
     // geometry.offsets = [];
+    const offsets = triangles / chunkSize;
 
-    var offsets = triangles / chunkSize;
-
-    for ( var i = 0; i < offsets; i ++ ) {
-
-        var offset = {
+    for (let i = 0; i < offsets; i++) {
+        const offset = {
             start: i * chunkSize * 3,
             index: i * chunkSize * 3,
             count: Math.min( triangles - ( i * chunkSize ), chunkSize ) * 3
         };
 
-        geometry.groups.push( offset );
-
+        geometry.groups.push(offset);
     }
 
 
     geometry.computeBoundingSphere();
+   
+    this.hexGrid = new Mesh( geometry, pointMaterial );
+    this.scene.add(this.hexGrid);
+}
 
-    
-    this.hexGrid = new THREE.Mesh( geometry, pointMaterial );
-    this.scene.add( this.hexGrid );
-
-};
-
-var createIntroLines = function(){
-    var sPoint;
-    var introLinesMaterial = new THREE.LineBasicMaterial({
+function createIntroLines(){
+    let sPoint;
+    const introLinesMaterial = new LineBasicMaterial({
         color: this.introLinesColor,
         transparent: true,
         linewidth: 2,
         opacity: .5
     });
 
-    for(var i = 0; i<this.introLinesCount; i++){
-        var geometry = new THREE.Geometry();
+    for (let i = 0; i<this.introLinesCount; i++){
+        const geometry = new Geometry();
 
-        var lat = Math.random()*180 + 90;
-        var lon =  Math.random()*5;
-        var lenBase = 4 + Math.floor(Math.random()*5);
+        const lat = Math.random()*180 + 90;
+        let lon =  Math.random()*5;
+        let lenBase = 4 + Math.floor(Math.random()*5);
 
-        if(Math.random()<.3){
+        if (Math.random() < 0.3) {
             lon = Math.random()*30 - 50;
             lenBase = 3 + Math.floor(Math.random()*3);
         }
 
-        for(var j = 0; j< lenBase; j++){
-            var thisPoint = utils.mapPoint(lat, lon - j * 5);
-            sPoint = new THREE.Vector3(thisPoint.x*this.introLinesAltitude, thisPoint.y*this.introLinesAltitude, thisPoint.z*this.introLinesAltitude);
+        for (let j = 0; j< lenBase; j++){
+            const thisPoint = mapPoint(lat, lon - j * 5);
+            sPoint = new Vector3(thisPoint.x*this.introLinesAltitude, thisPoint.y*this.introLinesAltitude, thisPoint.z*this.introLinesAltitude);
 
             geometry.vertices.push(sPoint);  
         }
 
-        this.introLines.add(new THREE.Line(geometry, introLinesMaterial));
+        this.introLines.add(new Line(geometry, introLinesMaterial));
 
     }
     this.scene.add(this.introLines);
-};
+}
 
 /* globe constructor */
 
 function Globe(width, height, opts){
-    var baseSampleMultiplier = .7;
-
-    if(!opts){
-        opts = {};
-    }
+    opts = opts || {};
 
     this.width = width;
     this.height = height;
-    // this.smokeIndex = 0;
     this.points = [];
-    this.introLines = new THREE.Object3D();
+    this.introLines = new Object3D();
     this.pins = [];
     this.markers = [];
     this.satelliteAnimations = [];
@@ -302,8 +263,6 @@ function Globe(width, height, opts){
         pinColor: "#00eeee",
         satelliteColor: "#ff0000",
         blankPercentage: 0,
-        thinAntarctica: .01, // only show 1% of antartica... you can't really see it on the map anyhow
-        mapUrl: "resources/equirectangle_projection.png",
         introLinesAltitude: 1.10,
         introLinesDuration: 2000,
         introLinesColor: "#8FD8D8",
@@ -320,7 +279,7 @@ function Globe(width, height, opts){
         viewAngle: 0
     };
 
-    for(var i in defaults){
+    for (let i in defaults){
         if(!this[i]){
             this[i] = defaults[i];
             if(opts[i]){
@@ -329,13 +288,17 @@ function Globe(width, height, opts){
         }
     }
 
+    this.opts = opts;
+    this.opts.background = this.opts.background || View.Color
+    this.opts.fog = this.opts.fog || View.Color
+
     this.setScale(this.scale);
 
-    this.renderer = new THREE.WebGLRenderer( { antialias: true } );
-    // todo: background color below
-    // this.renderer.setClearColor( 0xa50505 );
-    this.renderer.setPixelRatio( Defaults.Render.PixelRatio );
-    this.renderer.setSize( this.width, this.height);
+    this.renderer = new WebGLRenderer({ antialias: true });
+
+    this.renderer.setClearColor(this.opts.background);
+    this.renderer.setPixelRatio(Render.PixelRatio);
+    this.renderer.setSize(this.width, this.height);
 
     this.renderer.gammaInput = true;
     this.renderer.gammaOutput = true;
@@ -344,27 +307,24 @@ function Globe(width, height, opts){
 
     this.data.sort(function(a,b){return (b.lng - b.label.length * 2) - (a.lng - a.label.length * 2)});
 
-    for(var i = 0; i< this.data.length; i++){
+    for (let i = 0; i < this.data.length; i++){
         this.data[i].when = this.introLinesDuration*((180+this.data[i].lng)/360.0) + 500; 
     }
-
-
 }
 
 /* public globe functions */
 
 Globe.prototype.init = function(cb){
-
     // create the camera
-    this.camera = new THREE.PerspectiveCamera( 50, this.width / this.height, 1, this.cameraDistance + 300 );
+    this.camera = new PerspectiveCamera( 50, this.width / this.height, 1, this.cameraDistance+300);
     this.camera.position.z = this.cameraDistance;
 
     this.cameraAngle=(Math.PI);
 
     // create the scene
-    this.scene = new THREE.Scene();
+    this.scene = new Scene();
 
-    this.scene.fog = new THREE.Fog( 0x000000, this.cameraDistance, this.cameraDistance+300 );
+    this.scene.fog = new Fog(this.opts.fog, this.cameraDistance, this.cameraDistance+300);
 
     createIntroLines.call(this);
 
@@ -377,50 +337,40 @@ Globe.prototype.init = function(cb){
 };
 
 Globe.prototype.destroy = function(callback){
-
-    var _this = this;
     this.active = false;
 
-    setTimeout(function(){
-        while(_this.scene.children.length > 0){
-            _this.scene.remove(_this.scene.children[0]);
+    setTimeout(() => {
+        while (this.scene.children.length > 0){
+            this.scene.remove(this.scene.children[0]);
         }
-        if(typeof callback == "function"){
+        if (typeof callback == "function") {
             callback();
         }
-
     }, 1000);
-
 };
 
-Globe.prototype.addPin = function(lat, lon, text){
+Globe.prototype.addPin = function(lat, lon, text, opts) {
 
     lat = parseFloat(lat);
     lon = parseFloat(lon);
 
-    var opts = {
-        lineColor: this.pinColor,
-        topColor: this.pinColor,
-        font: this.font
-    }
+    let altitude = 1.2;
 
-    var altitude = 1.2;
-
-    if(typeof text != "string" || text.length === 0){
+    if (typeof text != "string" || text.length === 0){
         altitude -= .05 + Math.random() * .05;
     }
 
-    var pin = new Pin(lat, lon, text, altitude, this.scene, this.smokeProvider, opts);
+    const pin = new Pin(lat, lon, text, altitude, this.scene, this.smokeProvider, opts);
 
     this.pins.push(pin);
 
     // lets add quadtree stuff
 
-    var pos = latLon2d(lat, lon);
+    const pos = latLon2d(lat, lon);
 
     pin.pos_ = new Vec2(parseInt(pos.x),parseInt(pos.y)); 
 
-    if(text.length > 0){
+    if (text.length > 0){
         pin.rad_ = pos.rad;
     } else {
         pin.rad_ = 1;
@@ -428,14 +378,14 @@ Globe.prototype.addPin = function(lat, lon, text){
 
     this.quadtree.addObject(pin);
 
-    if(text.length > 0){
-        var collisions = this.quadtree.getCollidings(pin);
-        var collisionCount = 0;
-        var tooYoungCount = 0;
-        var hidePins = [];
+    if (text.length > 0){
+        const collisions = this.quadtree.getCollidings(pin);
+        let collisionCount = 0;
+        let tooYoungCount = 0;
+        let hidePins = [];
 
-        for(var i in collisions){
-            if(collisions[i].text.length > 0){
+        for (let i in collisions){
+            if (collisions[i].text.length > 0){
                 collisionCount++;
                 if(collisions[i].age() > 5000){
                     hidePins.push(collisions[i]);
@@ -445,8 +395,8 @@ Globe.prototype.addPin = function(lat, lon, text){
             }
         }
 
-        if(collisionCount > 0 && tooYoungCount == 0){
-            for(var i = 0; i< hidePins.length; i++){
+        if (collisionCount > 0 && tooYoungCount == 0){
+            for (let i = 0; i< hidePins.length; i++){
                 hidePins[i].hideLabel();
                 hidePins[i].hideSmoke();
                 hidePins[i].hideTop();
@@ -460,27 +410,20 @@ Globe.prototype.addPin = function(lat, lon, text){
         }
     }
 
-    if(this.pins.length > this.maxPins){
-        var oldPin = this.pins.shift();
+    if (this.pins.length > this.maxPins){
+        let oldPin = this.pins.shift();
         this.quadtree.removeObject(oldPin);
         oldPin.remove();
 
     }
 
     return pin;
-
 }
 
-Globe.prototype.addMarker = function(lat, lon, text, connected){
+Globe.prototype.addMarker = function(lat, lon, text, connected, opts){
+    let marker;
 
-    var marker;
-    var opts = {
-        markerColor: this.markerColor,
-        lineColor: this.markerColor,
-        font: this.font
-    };
-
-    if(typeof connected == "boolean" && connected){
+    if (connected === true) {
         marker = new Marker(lat, lon, text, 1.2, this.markers[this.markers.length-1], this.scene, this.camera.near, this.camera.far, opts);
     } else if(typeof connected == "object"){
         marker = new Marker(lat, lon, text, 1.2, connected, this.scene, this.camera.near, this.camera.far, opts);
@@ -501,49 +444,36 @@ Globe.prototype.addSatellite = function(lat, lon, altitude, opts, texture, anima
     /* texture and animator are optimizations so we don't have to regenerate certain 
      * redundant assets */
 
-    if(!opts){
-        opts = {};
-    }
+    opts = opts ||{};
+    opts.coreColor = opts.coreColor || this.satelliteColor;
 
-    if(opts.coreColor == undefined){
-        opts.coreColor = this.satelliteColor;
-    }
+    const satellite = new Satellite(lat, lon, altitude, this.scene, opts, texture, animator);
 
-    var satellite = new Satellite(lat, lon, altitude, this.scene, opts, texture, animator);
-
-    if(!this.satellites[satellite.toString()]){
+    if (!this.satellites[satellite.toString()]) {
         this.satellites[satellite.toString()] = satellite;
     }
 
-    satellite.onRemove(function(){
-            delete this.satellites[satellite.toString()];
-            }.bind(this));
-
+    satellite.onRemove(() => delete this.satellites[satellite.toString()]);
     return satellite;
 
 };
 
 Globe.prototype.addConstellation = function(sats, opts){
-
     /* TODO: make it so that when you remove the first in a constellation it removes all others */
 
-    var texture,
-    animator,
-    satellite,
-    constellation = [];
+    let constellation = [];
+    let satellite = null;
 
-    for(var i = 0; i< sats.length; i++){
+    for(let i = 0; i < sats.length; i++) {
         if(i === 0){
             satellite = this.addSatellite(sats[i].lat, sats[i].lon, sats[i].altitude, opts);
         } else {
             satellite = this.addSatellite(sats[i].lat, sats[i].lon, sats[i].altitude, opts, constellation[0].canvas, constellation[0].texture);
         }
         constellation.push(satellite);
-
     }
 
     return constellation;
-
 };
 
 
@@ -551,7 +481,7 @@ Globe.prototype.setMaxPins = function(_maxPins){
     this.maxPins = _maxPins;
 
     while(this.pins.length > this.maxPins){
-        var oldPin = this.pins.shift();
+        const oldPin = this.pins.shift();
         this.quadtree.removeObject(oldPin);
         oldPin.remove();
     }
@@ -582,7 +512,7 @@ Globe.prototype.setPinColor = function(_color){
 Globe.prototype.setScale = function(_scale){
     this.scale = _scale;
     this.cameraDistance = 1700/_scale;
-    if(this.scene && this.scene.fog){
+    if (this.scene && this.scene.fog){
        this.scene.fog.near = this.cameraDistance;
        this.scene.fog.far = this.cameraDistance + 300;
        createParticles.call(this);
@@ -593,55 +523,53 @@ Globe.prototype.setScale = function(_scale){
 
 Globe.prototype.tick = function(){
 
-    if(!this.camera){
+    if (!this.camera){
         return;
     }
 
-    if(!this.firstRunTime){
+    if (!this.firstRunTime){
         this.firstRunTime = Date.now();
     }
+
     addInitialData.call(this);
     TWEEN.update();
 
-    if(!this.lastRenderDate){
+    if (!this.lastRenderDate){
         this.lastRenderDate = new Date();
     }
 
-    if(!this.firstRenderDate){
+    if (!this.firstRenderDate){
         this.firstRenderDate = new Date();
     }
 
     this.totalRunTime = new Date() - this.firstRenderDate;
 
-    var renderTime = new Date() - this.lastRenderDate;
+    const renderTime = new Date() - this.lastRenderDate;
     this.lastRenderDate = new Date();
-    var rotateCameraBy = (2 * Math.PI)/(this.dayLength/renderTime);
+    const rotateCameraBy = (2 * Math.PI)/(this.dayLength/renderTime);
 
     this.cameraAngle += rotateCameraBy;
 
-    if(!this.active){
+    if (!this.active){
         this.cameraDistance += (1000 * renderTime/1000);
     }
-
 
     this.camera.position.x = this.cameraDistance * Math.cos(this.cameraAngle) * Math.cos(this.viewAngle);
     this.camera.position.y = Math.sin(this.viewAngle) * this.cameraDistance;
     this.camera.position.z = this.cameraDistance * Math.sin(this.cameraAngle) * Math.cos(this.viewAngle);
 
-
-    for(var i in this.satellites){
+    for (let i in this.satellites){
         this.satellites[i].tick(this.camera.position, this.cameraAngle, renderTime);
     }
 
-    for(var i = 0; i< this.satelliteMeshes.length; i++){
-        var mesh = this.satelliteMeshes[i];
+    for (let i = 0; i< this.satelliteMeshes.length; i++){
+        const mesh = this.satelliteMeshes[i];
         mesh.lookAt(this.camera.position);
         mesh.rotateZ(mesh.tiltDirection * Math.PI/2);
         mesh.rotateZ(Math.sin(this.cameraAngle + (mesh.lon / 180) * Math.PI) * mesh.tiltMultiplier * mesh.tiltDirection * -1);
-
     }
 
-    if(this.introLinesDuration > this.totalRunTime){
+    if (this.introLinesDuration > this.totalRunTime){
         if(this.totalRunTime/this.introLinesDuration < .1){
             this.introLines.children[0].material.opacity = (this.totalRunTime/this.introLinesDuration) * (1 / .1) - .2;
         }if(this.totalRunTime/this.introLinesDuration > .8){
@@ -661,10 +589,8 @@ Globe.prototype.tick = function(){
 
     this.smokeProvider.tick(this.totalRunTime);
 
-    this.camera.lookAt( this.scene.position );
-    this.renderer.render( this.scene, this.camera );
-
+    this.camera.lookAt(this.scene.position);
+    this.renderer.render(this.scene, this.camera);
 }
 
-module.exports = Globe;
-
+export default Globe;

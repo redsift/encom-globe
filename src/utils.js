@@ -38,6 +38,18 @@ export function mapPoint(lat, lng, scale) {
     return {x: x, y: y, z:z};
 }
 
+export function latLonToXYZ(width, height, lat, lon) {
+    const x = Math.floor(width/2.0 + (width/360.0)*lon);
+    const y = Math.floor((height/2.0 + (height/180.0)*lat));
+
+    return {x: x, y:y};
+}
+
+export function latLon2d(lat, lon) {
+    const rad = 2 + (Math.abs(lat)/90) * 15;
+    return {x: lat+90, y:lon + 180, rad: rad};
+}
+
 
 export function renderToCanvas(width, height, renderFunction) {
     const canvas = document.createElement('canvas');

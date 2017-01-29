@@ -1,6 +1,9 @@
 const Colors = {
     Markers: '#ffcc00',
     Pins: '#8fd8d8',
+    Background: '#000',
+    Label: '#fff',
+    Trail: '#eee',
     _Highlight: '#ff0000'
 };
 
@@ -20,11 +23,11 @@ export const Lines = {
 
 export const Labels = {
     TextFont: 'Raleway',
-    TextColor: '#fff',
+    TextColor: Colors.Label,
     TextSize: 30,    
     TextPaddingX: 10,
     TextPaddingY: 10,
-    TextStrokeStyle: '#000',
+    TextStrokeStyle: Colors.Background,
     TextStrokeWidth: 6,  
     UnderlineWidth: 4,
     UnderlineOffset: 4,
@@ -54,8 +57,12 @@ export const Pins = {
 }
 
 export const Smoke = {
-    Color: '#aaa',
+    Color: Colors.Trail,
     Count: 5000,
     PerPin: 30,
     PerSecond: 20
+};
+
+export const View = {
+    Color: Colors.Background
 };
