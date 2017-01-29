@@ -1,5 +1,6 @@
 const Colors = {
     Markers: '#ffcc00',
+    Pins: '#8fd8d8',
     _Highlight: '#ff0000'
 };
 
@@ -41,6 +42,15 @@ export const Markers = {
     RadiusInner: 14,
     RadiusOuter: 22,
     Scale_MS: 2000
+}
+
+export const Pins = {
+    Color: Colors.Pins,
+    Canvas: 32,
+    TextSize: 18, 
+    Fade_MS: 500,   
+    RadiusOuter: 7,    
+    Draw_MS: 2000 // bounces in 
 }
 
 export const Smoke = {

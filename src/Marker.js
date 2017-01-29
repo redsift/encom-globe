@@ -8,10 +8,9 @@ import {
 import MeshLine from 'three.meshline'
 import TWEEN from 'tween.js'
 
-import { renderToCanvas, mapPoint, createLabel } from './Utils'
+import { renderToCanvas, mapPoint, createLabel, PI_2 } from './Utils'
 import { Markers, Lines, Labels, Render } from './Defaults'
 
-const PI_2 = 2 * Math.PI;
 const SPOT_NEXT = 1.2;
 
 function createMarkerTexture(marker) {

@@ -4,6 +4,8 @@ import { Render as CONST, Labels as Labels } from './Defaults'
 const SHORTHANG_REGEX = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
 const GROUP_REGEX = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i;
 
+export const PI_2 = 2 * Math.PI;
+
 export function hexToRgb(hex) {
     // Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
     hex = hex.replace(SHORTHANG_REGEX, function(m, r, g, b) {

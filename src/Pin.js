@@ -1,44 +1,36 @@
-var THREE = require('three'),
-    TWEEN = require('tween.js'),
-    utils = require('./Utils'),
-    Defaults = require('./Defaults');
+'use strict'
 
+import {
+    Geometry, LineBasicMaterial, SpriteMaterial, Sprite, CanvasTexture, Line, Vector3
+} from 'three';
 
-var createTopCanvas = function(color) {
-    var markerWidth = 16,
-    markerHeight = 16;
+import TWEEN from 'tween.js'
 
-    return utils.renderToCanvas(markerWidth, markerHeight, function(ctx){
-        ctx.fillStyle=color;
+import { mapPoint, renderToCanvas, createLabel, PI_2 } from './Utils'
+import { Pins, Render } from './Defaults'
+
+function createTopTexture(pin) {
+    pin = pin || {};
+    pin.size = pin.size || Pins.Canvas;
+    pin.color = pin.color || Pins.Color;
+    pin.outer = pin.outer || Pins.RadiusOuter
+
+    const canvas = renderToCanvas(pin.size, pin.size, function(ctx) {
+        const arcW = pin.size / 2;
+        const arcH = pin.size / 2;
+
+        ctx.fillStyle = pin.color;
         ctx.beginPath();
-        ctx.arc(markerWidth/2, markerHeight/2, markerWidth/4, 0, 2* Math.PI);
+        ctx.arc(arcW, arcH, pin.outer, 0, PI_2);
         ctx.fill();
     });
 
-};
+    const texture = new CanvasTexture(canvas);
+    texture.name = "top";
+    return texture;
+}
 
-var Pin = function(lat, lon, text, altitude, scene, smokeProvider, _opts){
-
-    /* options that can be passed in */
-    var opts = {
-        lineColor: "#8FD8D8",
-        lineWidth: 1,
-        topColor: "#8FD8D8",
-        smokeColor: "#FFF",
-        showLabel: (text.length > 0),
-        showTop: (text.length > 0),
-        showSmoke: (text.length > 0)
-    }
-
-    var lineMaterial,
-       labelCanvas,
-       labelTexture,
-       labelMaterial,
-       topTexture,
-       topMaterial,
-       point,
-       line;
-
+function Pin(lat, lon, text, altitude, scene, smokeProvider, opts) {
     this.lat = lat;
     this.lon = lon;
     this.text = text;
@@ -47,99 +39,101 @@ var Pin = function(lat, lon, text, altitude, scene, smokeProvider, _opts){
     this.smokeProvider = smokeProvider;
     this.dateCreated = Date.now();
 
-    if(_opts){
-        for(var i in opts){
-            if(_opts[i] != undefined){
-                opts[i] = _opts[i];
-            }
-        }
-    }
+    const hasText = (text.length > 0);
 
+    opts = opts || { };
     this.opts = opts;
 
-    this.topVisible = opts.showTop;
-    this.smokeVisible = opts.showSmoke;
-    this.labelVisible = opts.showLabel;
+    this.opts.showLabel = this.opts.showLabel == null ? hasText : this.showLabel;
+    this.opts.showTop = this.opts.showTop == null ? hasText : this.showTop;
+    this.opts.showSmoke = this.opts.showSmoke == null ? hasText : this.showSmoke;
+
+    this.opts.pin = this.opts.pin || {};    
+    this.opts.pin.size = this.opts.pin.size || Pins.Canvas;
+    this.opts.pin.line = this.opts.pin.line || Pins.Color;
+    this.opts.pin.drawTime = this.opts.pin.drawTime || Pins.Draw_MS;
+    this.opts.pin.fadeTime = this.opts.pin.fadeTime || Pins.Fade_MS;
+
+    this.opts.label = this.opts.label || {};
+    this.opts.label.font = this.opts.label.font || { size: Pins.TextSize };
 
     /* the line */
-
-    this.lineGeometry = new THREE.Geometry();
-    lineMaterial = new THREE.LineBasicMaterial({
-        color: opts.lineColor,
-        linewidth: opts.lineWidth
+    this.lineGeometry = new Geometry();
+    const lineMaterial = new LineBasicMaterial({
+        color: this.opts.pin.line,
+        linewidth: 1
     });
 
-    point = utils.mapPoint(lat,lon);
+    const point = mapPoint(lat,lon);
 
-    this.lineGeometry.vertices.push(new THREE.Vector3(point.x, point.y, point.z));
-    this.lineGeometry.vertices.push(new THREE.Vector3(point.x, point.y, point.z));
-    this.line = new THREE.Line(this.lineGeometry, lineMaterial);
+    this.lineGeometry.vertices.push(new Vector3(point.x, point.y, point.z));
+    this.lineGeometry.vertices.push(new Vector3(point.x, point.y, point.z));
+    this.line = new Line(this.lineGeometry, lineMaterial);
 
     /* the label */
 
-    labelCanvas = utils.createLabel(text, { size: 18 });
-    labelTexture = new THREE.Texture(labelCanvas);
+    const labelCanvas = createLabel(text, this.opts.label.font);
+    const labelTexture = new CanvasTexture(labelCanvas);
     labelTexture.name = "pin-label";
-    labelTexture.needsUpdate = true;
 
-    labelMaterial = new THREE.SpriteMaterial({
-       map: labelTexture,
-       opacity: 0,
-       depthTest: true,
-       fog: true
+    const labelMaterial = new SpriteMaterial({
+        map: labelTexture,
+        opacity: 0,
+        depthTest: true,
+        fog: true
     });
 
-   this.labelSprite = new THREE.Sprite(labelMaterial);
-   this.labelSprite.position.set(point.x*altitude*1.1, point.y*altitude + (point.y < 0 ? -15 : 30), point.z*altitude*1.1);
-   this.labelSprite.scale.set(labelCanvas.width / Defaults.Render.PixelRatio, labelCanvas.height / Defaults.Render.PixelRatio);
+    this.labelSprite = new Sprite(labelMaterial);
+    this.labelSprite.position.set(point.x*altitude*1.1, point.y*altitude + (point.y < 0 ? -15 : 30), point.z*altitude*1.1);
+    this.labelSprite.scale.set(labelCanvas.width / Render.PixelRatio, labelCanvas.height / Render.PixelRatio);
 
-   /* the top */
+    /* the top */
 
-   topTexture = new THREE.Texture(createTopCanvas(opts.topColor));
-   topTexture.name = "pin";
-   topTexture.needsUpdate = true;
-   topMaterial = new THREE.SpriteMaterial({map: topTexture, depthTest: true, fog: true, opacity: 0});
-   this.topSprite = new THREE.Sprite(topMaterial);
-   this.topSprite.scale.set(20, 20);
-   this.topSprite.position.set(point.x * altitude, point.y * altitude, point.z * altitude);
+    if (!scene.topTexture) {
+        scene.topTexture = createTopTexture(this.opts.pin); 
+    }
+    const topMaterial = new SpriteMaterial({map: scene.topTexture, depthTest: true, fog: true, opacity: 0});
+    this.topSprite = new Sprite(topMaterial);
+    this.topSprite.scale.set(this.opts.pin.size, this.opts.pin.size);
+    this.topSprite.position.set(point.x * altitude, point.y * altitude, point.z * altitude);
 
-   /* the smoke */
-   if(this.smokeVisible){
-       this.smokeId = smokeProvider.setFire(lat, lon, altitude);
-   }
+    /* the smoke */
+    if (this.opts.showSmoke) {
+        this.smokeId = smokeProvider.setFire(lat, lon, altitude);
+    }
 
-   var _this = this; //arghhh
+    const _this = this; //arghhh
 
-   /* intro animations */
+    /* intro animations */
+    if (opts.showTop || opts.showLabel) {
+        new TWEEN.Tween( {opacity: 0})
+                    .to({opacity: 1}, this.opts.pin.fadeTime)
+                    .onUpdate(function(){
+                        if(_this.opts.showTop){
+                            topMaterial.opacity = this.opacity;
+                        } else {
+                            topMaterial.opacity = 0;
+                        }
+                        if(_this.opts.showLabel){
+                            labelMaterial.opacity = this.opacity;
+                        } else {
+                            labelMaterial.opacity = 0;
+                        }
+                    })
+                    .delay(this.opts.pin.drawTime - this.opts.pin.fadeTime)
+                    .start();
+    }
 
-   if(opts.showTop || opts.showLabel){
-       new TWEEN.Tween( {opacity: 0})
-           .to( {opacity: 1}, 500 )
-           .onUpdate(function(){
-               if(_this.topVisible){
-                   topMaterial.opacity = this.opacity;
-               } else {
-                   topMaterial.opacity = 0;
-               }
-               if(_this.labelVisible){
-                   labelMaterial.opacity = this.opacity;
-               } else {
-                   labelMaterial.opacity = 0;
-               }
-           }).delay(1000)
-           .start();
-   }
-
-
-   new TWEEN.Tween(point)
-   .to( {x: point.x*altitude, y: point.y*altitude, z: point.z*altitude}, 1500 )
-   .easing( TWEEN.Easing.Elastic.Out )
-   .onUpdate(function(){
-       _this.lineGeometry.vertices[1].x = this.x;
-       _this.lineGeometry.vertices[1].y = this.y;
-       _this.lineGeometry.vertices[1].z = this.z;
-       _this.lineGeometry.verticesNeedUpdate = true;
-   }).start();
+    new TWEEN.Tween(point)
+            .to({ x: point.x*altitude, y: point.y*altitude, z: point.z*altitude }, this.opts.pin.drawTime)
+            .easing(TWEEN.Easing.Elastic.Out)
+            .onUpdate(function() {
+                _this.lineGeometry.vertices[1].x = this.x;
+                _this.lineGeometry.vertices[1].y = this.y;
+                _this.lineGeometry.vertices[1].z = this.z;
+                _this.lineGeometry.verticesNeedUpdate = true;
+            })
+            .start();
 
     /* add to scene */
 
@@ -147,98 +141,98 @@ var Pin = function(lat, lon, text, altitude, scene, smokeProvider, _opts){
     this.scene.add(this.line);
     this.scene.add(this.topSprite);
 
-};
-
-Pin.prototype.toString = function(){
-    return "" + this.lat + "_" + this.lon;
 }
 
-Pin.prototype.changeAltitude = function(altitude){
-    var point = utils.mapPoint(this.lat, this.lon);
-    var _this = this; // arghhhh
+Pin.prototype.toString = function() {
+    return `${this.lat}_${this.lon}`;
+}
+
+Pin.prototype.changeAltitude = function(altitude) {
+    const point = mapPoint(this.lat, this.lon);
+    const _this = this; // arghhhh
 
    new TWEEN.Tween({altitude: this.altitude})
-   .to( {altitude: altitude}, 1500 )
-   .easing( TWEEN.Easing.Elastic.Out )
-   .onUpdate(function(){
-       if(_this.smokeVisible){
-           _this.smokeProvider.changeAltitude(this.altitude, _this.smokeId);
-       }
-       if(_this.topVisible){
-           _this.topSprite.position.set(point.x * this.altitude, point.y * this.altitude, point.z * this.altitude);
-       }
-       if(_this.labelVisible){
-           _this.labelSprite.position.set(point.x*this.altitude*1.1, point.y*this.altitude + (point.y < 0 ? -15 : 30), point.z*this.altitude*1.1);
-       }
-       _this.lineGeometry.vertices[1].x = point.x * this.altitude;
-       _this.lineGeometry.vertices[1].y = point.y * this.altitude;
-       _this.lineGeometry.vertices[1].z = point.z * this.altitude;
-       _this.lineGeometry.verticesNeedUpdate = true;
+                .to({altitude: altitude}, 1500)
+                .easing(TWEEN.Easing.Elastic.Out)
+                .onUpdate(function() {
+                    if(_this.opts.showSmoke) {
+                        _this.smokeProvider.changeAltitude(this.altitude, _this.smokeId);
+                    }
+                    if(_this.opts.showTop) {
+                        _this.topSprite.position.set(point.x * this.altitude, point.y * this.altitude, point.z * this.altitude);
+                    }
+                    if(_this.opts.showLabel) {
+                        _this.labelSprite.position.set(point.x*this.altitude*1.1, point.y*this.altitude + (point.y < 0 ? -15 : 30), point.z*this.altitude*1.1);
+                    }
+                    _this.lineGeometry.vertices[1].x = point.x * this.altitude;
+                    _this.lineGeometry.vertices[1].y = point.y * this.altitude;
+                    _this.lineGeometry.vertices[1].z = point.z * this.altitude;
+                    _this.lineGeometry.verticesNeedUpdate = true;
 
-   })
-   .onComplete(function(){
-       _this.altitude = altitude;
-       
-   }).start();
+                })
+                .onComplete(function(){
+                    _this.altitude = altitude;
+                    
+                })
+                .start();
 
 };
 
-Pin.prototype.hideTop = function(){
-    if(this.topVisible){
+Pin.prototype.hideTop = function() {
+    if (this.opts.showTop){
         this.topSprite.material.opacity = 0.0;
-        this.topVisible = false;
+        this.opts.showTop = false;
     }
 };
 
-Pin.prototype.showTop = function(){
-    if(!this.topVisible){
+Pin.prototype.showTop = function() {
+    if (!this.opts.showTop){
         this.topSprite.material.opacity = 1.0;
-        this.topVisible = true;
+        this.opts.showTop = true;
     }
 };
 
-Pin.prototype.hideLabel = function(){
-    if(this.labelVisible){
+Pin.prototype.hideLabel = function() {
+    if (this.opts.showLabel){
         this.labelSprite.material.opacity = 0.0;
-        this.labelVisible = false;
+        this.opts.showLabel = false;
     }
 };
 
-Pin.prototype.showLabel = function(){
-    if(!this.labelVisible){
+Pin.prototype.showLabel = function() {
+    if (!this.opts.showLabel){
         this.labelSprite.material.opacity = 1.0;
-        this.labelVisible = true;
+        this.opts.showLabel = true;
     }
 };
 
-Pin.prototype.hideSmoke = function(){
-    if(this.smokeVisible){
+Pin.prototype.hideSmoke = function() {
+    if (this.opts.showSmoke){
         this.smokeProvider.extinguish(this.smokeId);
-        this.smokeVisible = false;
+        this.opts.showSmoke = false;
     }
 };
 
-Pin.prototype.showSmoke = function(){
-    if(!this.smokeVisible){
+Pin.prototype.showSmoke = function() {
+    if (!this.opts.showSmoke){
         this.smokeId  = this.smokeProvider.setFire(this.lat, this.lon, this.altitude);
-        this.smokeVisible = true;
+        this.opts.showSmoke = true;
     }
 };
 
-Pin.prototype.age = function(){
+Pin.prototype.age = function() {
     return Date.now() - this.dateCreated;
 
 };
 
-Pin.prototype.remove = function(){
+Pin.prototype.remove = function() {
     this.scene.remove(this.labelSprite);
     this.scene.remove(this.line);
     this.scene.remove(this.topSprite);
 
-    if(this.smokeVisible){
+    if (this.opts.showSmoke){
         this.smokeProvider.extinguish(this.smokeId);
     }
 };
 
-module.exports = Pin;
-
+export default Pin;
