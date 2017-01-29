@@ -23,7 +23,7 @@
     "pusher.color": "~0.2.4",
     "quadtree2": "https://github.com/redsift/quadtree2.js/tarball/master",
     "three": "~0.84.0",
-    "three.meshline": "^1.0.1",
+    "three.meshline": "https://github.com/redsift/THREE.MeshLine/tarball/master",
     "tween.js": "~16.6.0",
     "vec2": "~1.6.0"
   },

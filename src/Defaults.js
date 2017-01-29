@@ -8,10 +8,12 @@ export const Render = {
 };
 
 export const Lines = {
+    Canvas: 128,
     Color: Colors.Markers,
     Segments: 150,
     Opacity: 0.7,
-    Width: 10    
+    Width: 6,
+    DotWiggle: 0 // how much the dotted line should wiggle from the solid   
 };
 
 export const Labels = {

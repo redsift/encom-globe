@@ -5,6 +5,7 @@ var THREE = require('three'),
     Defaults = require('./Defaults');
 
 const PI_2 = 2 * Math.PI;
+const SPOT_NEXT = 1.2;
 
 function createMarkerTexture(marker) {
     marker = marker || {};
@@ -34,6 +35,37 @@ function createMarkerTexture(marker) {
     return texture;
 }
 
+function createLineTexture(line) {
+    line = line || {};
+    line.size = line.size || Defaults.Lines.Canvas;
+
+    const canvas = utils.renderToCanvas(line.size, line.size, function (context) {
+        // creates a alpha modulation texture
+        // that looks like Contrails
+
+        const RGB_ON = 'rgba(255, 255, 255, 1.0)';
+        const RGB_OFF = 'rgba(255, 255, 255, 0.0)';
+        const RGB_MID = 'rgba(255, 255, 255, 0.33)';
+
+        const gradient = context.createLinearGradient(0, 0, 0, line.size);
+        gradient.addColorStop(0.00, RGB_OFF);
+        gradient.addColorStop(0.10, RGB_OFF);
+        gradient.addColorStop(0.25, RGB_ON);
+        gradient.addColorStop(0.50, RGB_MID);  
+        gradient.addColorStop(0.75, RGB_ON);
+        gradient.addColorStop(0.90, RGB_OFF);
+        gradient.addColorStop(1.00, RGB_OFF);
+        context.fillStyle = gradient;
+        context.fillRect(0, 0, line.size, line.size);
+
+    });
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.name = "line";
+
+    return texture;
+}
+
 function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
 
     this.lat = parseFloat(lat);
@@ -56,6 +88,7 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
     this.opts.lines.segments = this.opts.lines.segments || Defaults.Lines.Segments;
     this.opts.lines.opacity = this.opts.lines.opacity || Defaults.Lines.Opacity;
     this.opts.lines.width = this.opts.lines.width || Defaults.Lines.Width;
+    this.opts.lines.dotwiggle = this.opts.lines.dotwiggle || Defaults.Lines.DotWiggle;
 
     this.opts.drawTime = this.opts.drawTime || Defaults.Markers.Delay_MS;
 
@@ -124,20 +157,7 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
 
   if (this.previous) {
         this.geometrySpline = new THREE.Geometry();
-        let materialSpline = new THREE.LineBasicMaterial({
-            color: this.opts.lines.color,
-            transparent: true,
-            linewidth: 6,
-            opacity: .5
-        });
-
         this.geometrySplineDotted = new THREE.Geometry();
-        let materialSplineDotted = new THREE.LineBasicMaterial({
-            color: this.opts.lines.color,
-            linewidth: 1,
-            transparent: true,
-            opacity: this.opts.lines.opacity
-        });
 
         let latdist = (lat - previous.lat) / this.opts.lines.segments;
         let londist = (lon - previous.lon) / this.opts.lines.segments;
@@ -155,8 +175,8 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
                 pointList2.push({lat: nextlat+1, lon: nextlon, index: j});
             }
 
-            let sPoint = new THREE.Vector3(startPoint.x*1.2, startPoint.y*1.2, startPoint.z*1.2);
-            let sPoint2 = new THREE.Vector3(startPoint.x*1.2, startPoint.y*1.2, startPoint.z*1.2);
+            let sPoint = new THREE.Vector3(startPoint.x * SPOT_NEXT, startPoint.y * SPOT_NEXT, startPoint.z * SPOT_NEXT);
+            let sPoint2 = new THREE.Vector3(startPoint.x * SPOT_NEXT, startPoint.y * SPOT_NEXT, startPoint.z * SPOT_NEXT);
 
             sPoint.globe_index = j;
             sPoint2.globe_index = j;
@@ -165,32 +185,47 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
             this.geometrySplineDotted.vertices.push(sPoint2);  
         }
 
-
-
         // -- mesh line
+        if (!scene.lineTexture) {
+            scene.lineTexture = createLineTexture(this.opts.lines);
+        }
+
         if (!this.meshLine) {
             this.meshLine = new MeshLine.MeshLine();
         }
-        this.meshLine.setGeometry(this.geometrySpline);
+
+        const sizeFunction = (p) => 0.5 + 3 * Math.sin(p * Math.PI);
+        this.meshLine.setGeometry(this.geometrySpline, sizeFunction);
 
         const materialMeshSpline = new MeshLine.MeshLineMaterial({ 
-            useMap: false,
+            useMap: true,
+            map: scene.lineTexture,
             color: new THREE.Color(this.opts.lines.color),
             opacity: this.opts.lines.opacity,
             lineWidth: this.opts.lines.width, 
             transparent: true,
             blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
             depthTest: false,
             resolution: new THREE.Vector2(1024, 1024), // should be window height
             sizeAttenuation: true,
             near: near,
-            far: far 
+            far: far,
+            fog: true
         });
         // -- end mesh line
+        
+        const materialSplineDotted = new THREE.LineBasicMaterial({
+            color: this.opts.lines.color,
+            linewidth: 1,
+            transparent: true,
+            opacity: this.opts.lines.opacity
+        });
 
         const update = () => {
             let nextSpot = pointList.shift();
             let nextSpot2 = pointList2.shift();
+            const SPOT_NEXT_O = SPOT_NEXT - this.opts.lines.dotwiggle;
 
             for (let x = 0; x < this.geometrySpline.vertices.length; x++){
 
@@ -200,14 +235,14 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
                 let currentVert2 = this.geometrySplineDotted.vertices[x];
                 let currentPoint2 = utils.mapPoint(nextSpot2.lat, nextSpot2.lon);
 
-                if (x >= nextSpot.index){
-                    currentVert.set(currentPoint.x*1.2, currentPoint.y*1.2, currentPoint.z*1.2);
-                    currentVert2.set(currentPoint2.x*1.19, currentPoint2.y*1.19, currentPoint2.z*1.19);
+                if (x >= nextSpot.index) {
+                    currentVert.set(currentPoint.x * SPOT_NEXT, currentPoint.y * SPOT_NEXT, currentPoint.z * SPOT_NEXT);
+                    currentVert2.set(currentPoint2.x * SPOT_NEXT_O, currentPoint2.y * SPOT_NEXT_O, currentPoint2.z * SPOT_NEXT_O);
                 }
             }
             
             this.geometrySpline.verticesNeedUpdate = true;
-            this.meshLine.setGeometry(this.geometrySpline); // ned to reset it
+            this.meshLine.setGeometry(this.geometrySpline, sizeFunction); // ned to reset it
 
             this.geometrySplineDotted.verticesNeedUpdate = true;
 
@@ -220,10 +255,12 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
 
         const trailMesh = new THREE.Mesh(this.meshLine.geometry, materialMeshSpline);
         trailMesh.frustumCulled = false;
+
         this.scene.add(trailMesh);
-       
-        // this.scene.add(new THREE.Line(this.geometrySpline, materialSpline));
-        this.scene.add(new THREE.LineSegments(this.geometrySplineDotted, materialSplineDotted));
+
+        if (this.opts.lines.dotwiggle !== 0) {
+            this.scene.add(new THREE.LineSegments(this.geometrySplineDotted, materialSplineDotted));
+        }
     }
 
     this.scene.add(this.marker);
