@@ -72,6 +72,8 @@ export const Globes = {
     Color: Colors.Land
 }
 
+const introDuration_MS = 2000;
+
 export const View = {
     Depth: 350,
     Scale: 1.0,
@@ -79,5 +81,7 @@ export const View = {
     IntroLineColor: Colors.Pins,
     IntroLineCount: 80,
     IntroLineAltitude: 1.10,
-    IntroLineDuration_MS: 2000 
+    IntroLineDuration_MS: introDuration_MS,
+    IntroDataOffset_MS:  introDuration_MS,
+    IntroDataDuration_MS: introDuration_MS
 };

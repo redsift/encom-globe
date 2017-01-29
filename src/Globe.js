@@ -3,7 +3,7 @@
 import {
     ShaderMaterial, VertexColors, DoubleSide, BufferGeometry, BufferAttribute,
     PerspectiveCamera, Scene, Fog, Color, Mesh, LineBasicMaterial, Geometry,
-    Vector3, Line, Object3D, WebGLRenderer, ShaderChunk, UniformsUtils, UniformsLib
+    Vector3, Line, Object3D, WebGLRenderer, ShaderChunk
 } from 'three';
 
 import TWEEN from 'tween.js'
@@ -39,7 +39,348 @@ function addInitialData() {
     }
 }
 
-function createParticles() {
+/* globe constructor */
+function Globe(width, height, opts){
+    opts = opts || {};
+    
+    this.data = (opts.data ? opts.data.map(d => Object.assign({}, d)) : null) || []; // copy data as it is modified
+    this.tiles = opts.tiles || [];
+
+    this.width = width;
+    this.height = height;
+    this.points = [];
+    this.introLines = new Object3D();
+    this.pins = [];
+    this.markers = [];
+    this.satelliteAnimations = [];
+    this.satelliteMeshes = [];
+    this.satellites = {};
+    this.quadtree = new Quadtree2({ size: new Vec2(180, 360), objectLimit: 5 });
+    this.active = true;
+
+    // Adding odd hack to work with current packages
+    this.quadtree.setKey('pos', 'pos_');
+    this.quadtree.setKey('rad', 'rad_');
+    // end hack
+
+    this.maxPins = 500;
+    this.maxMarkers = 4;
+    this.viewAngle = 0;
+    this.dayLength = 28000;
+   
+    this.scale = View.Scale;
+
+    this.baseColor = opts.globeColor || Globes.Color;
+
+    this.introLinesAltitude = opts.introLinesAltitude || View.IntroLineAltitude;
+    this.introLinesDuration = opts.introLinesDuration || View.IntroLineDuration_MS;
+    this.introLinesColor = opts.introLinesColor || View.IntroLineColor;
+    this.introLinesCount = opts.introLinesCount || View.IntroLineCount;
+
+    this.introDataOffset = opts.introDataOffset || View.IntroDataOffset_MS; // wait till data animation
+    this.introDataDuration = opts.introDataDuration || View.IntroDataDuration_MS; // length of data animation
+
+    this.opts = opts;
+    this.opts.background = this.opts.background || View.Color
+    this.opts.fog = this.opts.fog || View.Color
+
+    this.setScale(this.scale);
+
+    this.renderer = new WebGLRenderer({ antialias: true });
+
+    this.renderer.setClearColor(this.opts.background);
+    this.renderer.setPixelRatio(Render.PixelRatio);
+    this.renderer.setSize(this.width, this.height);
+
+    this.renderer.gammaInput = true;
+    this.renderer.gammaOutput = true;
+
+    this.domElement = this.renderer.domElement;
+
+    this.data.sort((a,b) => (b.lng - b.label.length * 2) - (a.lng - a.label.length * 2));
+
+    for (let i = 0; i < this.data.length; i++){
+        this.data[i].when = this.introDataDuration * ((180.0 + this.data[i].lng) / 360.0) + this.introDataOffset; 
+    }
+}
+
+/* public globe functions */
+
+Globe.prototype.init = function(cb){
+    // create the camera
+    this.camera = new PerspectiveCamera(50, this.width / this.height, 1, this.cameraDistance + View.Depth);
+    this.camera.position.z = this.cameraDistance;
+
+    this.cameraAngle = Math.PI;
+
+    // create the scene
+    this.scene = new Scene();
+
+    this.scene.fog = new Fog(this.opts.fog, this.cameraDistance, this.cameraDistance + View.Depth);
+
+    // create the smoke particles
+    this.smokeProvider = new SmokeProvider(this.scene);
+
+    this.createIntroLines();
+    this.createParticles();
+
+    setTimeout(cb, 500);
+};
+
+Globe.prototype.destroy = function(callback){
+    this.active = false;
+
+    setTimeout(() => {
+        while (this.scene.children.length > 0){
+            this.scene.remove(this.scene.children[0]);
+        }
+        if (typeof callback == "function") {
+            callback();
+        }
+    }, 1000);
+};
+
+Globe.prototype.addPin = function(lat, lon, text, opts) {
+
+    lat = parseFloat(lat);
+    lon = parseFloat(lon);
+
+    let altitude = 1.2;
+
+    if (typeof text != "string" || text.length === 0){
+        altitude -= .05 + Math.random() * .05;
+    }
+
+    const pin = new Pin(lat, lon, text, altitude, this.scene, this.smokeProvider, opts);
+
+    this.pins.push(pin);
+
+    // lets add quadtree stuff
+
+    const pos = latLon2d(lat, lon);
+
+    pin.pos_ = new Vec2(parseInt(pos.x),parseInt(pos.y)); 
+
+    if (text.length > 0){
+        pin.rad_ = pos.rad;
+    } else {
+        pin.rad_ = 1;
+    }
+
+    this.quadtree.addObject(pin);
+
+    if (text.length > 0){
+        const collisions = this.quadtree.getCollidings(pin);
+        let collisionCount = 0;
+        let tooYoungCount = 0;
+        let hidePins = [];
+
+        for (let i in collisions){
+            if (collisions[i].text.length > 0){
+                collisionCount++;
+                if(collisions[i].age() > 5000){
+                    hidePins.push(collisions[i]);
+                } else {
+                    tooYoungCount++;
+                }
+            }
+        }
+
+        if (collisionCount > 0 && tooYoungCount == 0){
+            for (let i = 0; i< hidePins.length; i++){
+                hidePins[i].hideLabel();
+                hidePins[i].hideSmoke();
+                hidePins[i].hideTop();
+                hidePins[i].changeAltitude(Math.random() * .05 + 1.1);
+            }
+        } else if (collisionCount > 0){
+            pin.hideLabel();
+            pin.hideSmoke();
+            pin.hideTop();
+            pin.changeAltitude(Math.random() * .05 + 1.1);
+        }
+    }
+
+    if (this.pins.length > this.maxPins){
+        let oldPin = this.pins.shift();
+        this.quadtree.removeObject(oldPin);
+        oldPin.remove();
+
+    }
+
+    return pin;
+}
+
+//TODO: Clean up this API
+Globe.prototype.addMarker = function(lat, lon, text, connected, opts) {
+    if (typeof lat === "object") {
+        text = lat.label;
+        lon = lat.lon;
+        lat = lat.lat;
+    }
+    let marker;
+
+    if (connected === true) {
+        marker = new Marker(lat, lon, text, 1.2, this.markers[this.markers.length-1], this.scene, this.camera.near, this.camera.far, opts);
+    } else if(typeof connected == "object"){
+        marker = new Marker(lat, lon, text, 1.2, connected, this.scene, this.camera.near, this.camera.far, opts);
+    } else {
+        marker = new Marker(lat, lon, text, 1.2, null, this.scene, this.camera.near, this.camera.far, opts);
+    }
+
+    this.markers.push(marker);
+
+    if(this.markers.length > this.maxMarkers){
+        this.markers.shift().remove();
+    }
+
+    return marker;
+}
+
+Globe.prototype.addSatellite = function(lat, lon, altitude, opts, texture, animator){
+    /* texture and animator are optimizations so we don't have to regenerate certain 
+     * redundant assets */
+
+    opts = opts ||{};
+    opts.coreColor = opts.coreColor || Satellites.Color;
+
+    const satellite = new Satellite(lat, lon, altitude, this.scene, opts, texture, animator);
+
+    if (!this.satellites[satellite.toString()]) {
+        this.satellites[satellite.toString()] = satellite;
+    }
+
+    satellite.onRemove(() => delete this.satellites[satellite.toString()]);
+    return satellite;
+
+};
+
+Globe.prototype.addConstellation = function(sats, opts){
+    /* TODO: make it so that when you remove the first in a constellation it removes all others */
+
+    let constellation = [];
+    let satellite = null;
+
+    for(let i = 0; i < sats.length; i++) {
+        if(i === 0){
+            satellite = this.addSatellite(sats[i].lat, sats[i].lon, sats[i].altitude, opts);
+        } else {
+            satellite = this.addSatellite(sats[i].lat, sats[i].lon, sats[i].altitude, opts, constellation[0].canvas, constellation[0].texture);
+        }
+        constellation.push(satellite);
+    }
+
+    return constellation;
+};
+
+
+Globe.prototype.setMaxPins = function(_maxPins){
+    this.maxPins = _maxPins;
+
+    while(this.pins.length > this.maxPins){
+        const oldPin = this.pins.shift();
+        this.quadtree.removeObject(oldPin);
+        oldPin.remove();
+    }
+};
+
+Globe.prototype.setMaxMarkers = function(_maxMarkers){
+    this.maxMarkers = _maxMarkers;
+    while(this.markers.length > this.maxMarkers){
+        this.markers.shift().remove();
+    }
+};
+
+Globe.prototype.setBaseColor = function(_color){
+    this.baseColor = _color;
+    this.createParticles();
+};
+
+Globe.prototype.setScale = function(_scale){
+    this.scale = _scale;
+    this.cameraDistance = 1700/_scale;
+    if (this.scene && this.scene.fog){
+       this.scene.fog.near = this.cameraDistance;
+       this.scene.fog.far = this.cameraDistance + 300;
+       this.createParticles();
+       this.camera.far = this.cameraDistance + 300;
+       this.camera.updateProjectionMatrix();
+    }
+};
+
+Globe.prototype.tick = function(){
+
+    if (!this.camera){
+        return;
+    }
+
+    if (!this.firstRunTime){
+        this.firstRunTime = Date.now();
+    }
+
+    addInitialData.call(this);
+    TWEEN.update();
+
+    if (!this.lastRenderDate){
+        this.lastRenderDate = new Date();
+    }
+
+    if (!this.firstRenderDate){
+        this.firstRenderDate = new Date();
+    }
+
+    this.totalRunTime = new Date() - this.firstRenderDate;
+
+    const renderTime = new Date() - this.lastRenderDate;
+    this.lastRenderDate = new Date();
+    const rotateCameraBy = (2 * Math.PI)/(this.dayLength/renderTime);
+
+    this.cameraAngle += rotateCameraBy;
+
+    if (!this.active){
+        this.cameraDistance += (1000 * renderTime/1000);
+    }
+
+    this.camera.position.x = this.cameraDistance * Math.cos(this.cameraAngle) * Math.cos(this.viewAngle);
+    this.camera.position.y = Math.sin(this.viewAngle) * this.cameraDistance;
+    this.camera.position.z = this.cameraDistance * Math.sin(this.cameraAngle) * Math.cos(this.viewAngle);
+
+    for (let i in this.satellites){
+        this.satellites[i].tick(this.camera.position, this.cameraAngle, renderTime);
+    }
+
+    for (let i = 0; i< this.satelliteMeshes.length; i++){
+        const mesh = this.satelliteMeshes[i];
+        mesh.lookAt(this.camera.position);
+        mesh.rotateZ(mesh.tiltDirection * Math.PI/2);
+        mesh.rotateZ(Math.sin(this.cameraAngle + (mesh.lon / 180) * Math.PI) * mesh.tiltMultiplier * mesh.tiltDirection * -1);
+    }
+
+    if (this.introLinesDuration > this.totalRunTime){
+        if(this.totalRunTime/this.introLinesDuration < .1){
+            this.introLines.children[0].material.opacity = (this.totalRunTime/this.introLinesDuration) * (1 / .1) - .2;
+        }if(this.totalRunTime/this.introLinesDuration > .8){
+            this.introLines.children[0].material.opacity = Math.max(1-this.totalRunTime/this.introLinesDuration,0) * (1 / .2);
+        } else {
+            this.introLines.children[0].material.opacity = 1;
+        }
+        this.introLines.rotateY((2 * Math.PI)/(this.introLinesDuration/renderTime));
+    } else if(this.introLines){
+        this.scene.remove(this.introLines);
+        delete[this.introLines];
+    }
+
+    // do the shaders
+
+    this.pointUniforms.currentTime.value = this.totalRunTime;
+
+    this.smokeProvider.tick(this.totalRunTime);
+
+    this.camera.lookAt(this.scene.position);
+    this.renderer.render(this.scene, this.camera);
+}
+
+Globe.prototype.createParticles = function () {
     if (this.hexGrid){
         this.scene.remove(this.hexGrid);
     }
@@ -90,11 +431,11 @@ function createParticles() {
     ].join("\n");
 
     this.pointUniforms = {
-            fogNear: { value: this.cameraDistance },
-            fogFar: { value: this.cameraDistance + View.Depth },
-            fogColor: { value: new Color(this.opts.fog) },
-            currentTime: { type: 'f', value: 0.0}
-        };
+        fogNear: { value: this.cameraDistance },
+        fogFar: { value: this.cameraDistance + View.Depth },
+        fogColor: { value: new Color(this.opts.fog) },
+        currentTime: { type: 'f', value: 0.0}
+    };
 
     const pointMaterial = new ShaderMaterial( {
         uniforms:       this.pointUniforms,
@@ -204,7 +545,7 @@ function createParticles() {
     this.scene.add(this.hexGrid);
 }
 
-function createIntroLines() {
+Globe.prototype.createIntroLines = function () {
     let sPoint;
     const introLinesMaterial = new LineBasicMaterial({
         color: this.introLinesColor,
@@ -236,341 +577,6 @@ function createIntroLines() {
 
     }
     this.scene.add(this.introLines);
-}
-
-/* globe constructor */
-
-function Globe(width, height, opts){
-    opts = opts || {};
-    
-    this.data = opts.data || [];
-    this.tiles = opts.tiles || [];
-
-    this.width = width;
-    this.height = height;
-    this.points = [];
-    this.introLines = new Object3D();
-    this.pins = [];
-    this.markers = [];
-    this.satelliteAnimations = [];
-    this.satelliteMeshes = [];
-    this.satellites = {};
-    this.quadtree = new Quadtree2({ size: new Vec2(180, 360), objectLimit: 5 });
-    this.active = true;
-
-    // Adding odd hack to work with current packages
-    this.quadtree.setKey('pos', 'pos_');
-    this.quadtree.setKey('rad', 'rad_');
-    // end hack
-
-    this.maxPins = 500;
-    this.maxMarkers = 4;
-    this.viewAngle = 0;
-    this.dayLength = 28000;
-   
-    this.scale = View.Scale;
-
-    this.baseColor = opts.globeColor || Globes.Color;
-
-    this.introLinesAltitude = opts.introLinesAltitude || View.IntroLineAltitude;
-    this.introLinesDuration = opts.introLinesDuration || View.IntroLineDuration_MS;
-    this.introLinesColor = opts.introLinesColor || View.IntroLineColor;
-    this.introLinesCount = opts.introLinesCount || View.IntroLineCount;
-
-
-    this.opts = opts;
-    this.opts.background = this.opts.background || View.Color
-    this.opts.fog = this.opts.fog || View.Color
-
-    this.setScale(this.scale);
-
-    this.renderer = new WebGLRenderer({ antialias: true });
-
-    this.renderer.setClearColor(this.opts.background);
-    this.renderer.setPixelRatio(Render.PixelRatio);
-    this.renderer.setSize(this.width, this.height);
-
-    this.renderer.gammaInput = true;
-    this.renderer.gammaOutput = true;
-
-    this.domElement = this.renderer.domElement;
-
-    this.data.sort(function(a,b){return (b.lng - b.label.length * 2) - (a.lng - a.label.length * 2)});
-
-    for (let i = 0; i < this.data.length; i++){
-        this.data[i].when = this.introLinesDuration*((180+this.data[i].lng)/360.0) + 500; 
-    }
-}
-
-/* public globe functions */
-
-Globe.prototype.init = function(cb){
-    // create the camera
-    this.camera = new PerspectiveCamera(50, this.width / this.height, 1, this.cameraDistance + View.Depth);
-    this.camera.position.z = this.cameraDistance;
-
-    this.cameraAngle = Math.PI;
-
-    // create the scene
-    this.scene = new Scene();
-
-    this.scene.fog = new Fog(this.opts.fog, this.cameraDistance, this.cameraDistance + View.Depth);
-
-    createIntroLines.call(this);
-
-    // create the smoke particles
-
-    this.smokeProvider = new SmokeProvider(this.scene);
-
-    createParticles.call(this);
-    setTimeout(cb, 500);
-};
-
-Globe.prototype.destroy = function(callback){
-    this.active = false;
-
-    setTimeout(() => {
-        while (this.scene.children.length > 0){
-            this.scene.remove(this.scene.children[0]);
-        }
-        if (typeof callback == "function") {
-            callback();
-        }
-    }, 1000);
-};
-
-Globe.prototype.addPin = function(lat, lon, text, opts) {
-
-    lat = parseFloat(lat);
-    lon = parseFloat(lon);
-
-    let altitude = 1.2;
-
-    if (typeof text != "string" || text.length === 0){
-        altitude -= .05 + Math.random() * .05;
-    }
-
-    const pin = new Pin(lat, lon, text, altitude, this.scene, this.smokeProvider, opts);
-
-    this.pins.push(pin);
-
-    // lets add quadtree stuff
-
-    const pos = latLon2d(lat, lon);
-
-    pin.pos_ = new Vec2(parseInt(pos.x),parseInt(pos.y)); 
-
-    if (text.length > 0){
-        pin.rad_ = pos.rad;
-    } else {
-        pin.rad_ = 1;
-    }
-
-    this.quadtree.addObject(pin);
-
-    if (text.length > 0){
-        const collisions = this.quadtree.getCollidings(pin);
-        let collisionCount = 0;
-        let tooYoungCount = 0;
-        let hidePins = [];
-
-        for (let i in collisions){
-            if (collisions[i].text.length > 0){
-                collisionCount++;
-                if(collisions[i].age() > 5000){
-                    hidePins.push(collisions[i]);
-                } else {
-                    tooYoungCount++;
-                }
-            }
-        }
-
-        if (collisionCount > 0 && tooYoungCount == 0){
-            for (let i = 0; i< hidePins.length; i++){
-                hidePins[i].hideLabel();
-                hidePins[i].hideSmoke();
-                hidePins[i].hideTop();
-                hidePins[i].changeAltitude(Math.random() * .05 + 1.1);
-            }
-        } else if (collisionCount > 0){
-            pin.hideLabel();
-            pin.hideSmoke();
-            pin.hideTop();
-            pin.changeAltitude(Math.random() * .05 + 1.1);
-        }
-    }
-
-    if (this.pins.length > this.maxPins){
-        let oldPin = this.pins.shift();
-        this.quadtree.removeObject(oldPin);
-        oldPin.remove();
-
-    }
-
-    return pin;
-}
-
-Globe.prototype.addMarker = function(lat, lon, text, connected, opts) {
-    let marker;
-
-    if (connected === true) {
-        marker = new Marker(lat, lon, text, 1.2, this.markers[this.markers.length-1], this.scene, this.camera.near, this.camera.far, opts);
-    } else if(typeof connected == "object"){
-        marker = new Marker(lat, lon, text, 1.2, connected, this.scene, this.camera.near, this.camera.far, opts);
-    } else {
-        marker = new Marker(lat, lon, text, 1.2, null, this.scene, this.camera.near, this.camera.far, opts);
-    }
-
-    this.markers.push(marker);
-
-    if(this.markers.length > this.maxMarkers){
-        this.markers.shift().remove();
-    }
-
-    return marker;
-}
-
-Globe.prototype.addSatellite = function(lat, lon, altitude, opts, texture, animator){
-    /* texture and animator are optimizations so we don't have to regenerate certain 
-     * redundant assets */
-
-    opts = opts ||{};
-    opts.coreColor = opts.coreColor || Satellites.Color;
-
-    const satellite = new Satellite(lat, lon, altitude, this.scene, opts, texture, animator);
-
-    if (!this.satellites[satellite.toString()]) {
-        this.satellites[satellite.toString()] = satellite;
-    }
-
-    satellite.onRemove(() => delete this.satellites[satellite.toString()]);
-    return satellite;
-
-};
-
-Globe.prototype.addConstellation = function(sats, opts){
-    /* TODO: make it so that when you remove the first in a constellation it removes all others */
-
-    let constellation = [];
-    let satellite = null;
-
-    for(let i = 0; i < sats.length; i++) {
-        if(i === 0){
-            satellite = this.addSatellite(sats[i].lat, sats[i].lon, sats[i].altitude, opts);
-        } else {
-            satellite = this.addSatellite(sats[i].lat, sats[i].lon, sats[i].altitude, opts, constellation[0].canvas, constellation[0].texture);
-        }
-        constellation.push(satellite);
-    }
-
-    return constellation;
-};
-
-
-Globe.prototype.setMaxPins = function(_maxPins){
-    this.maxPins = _maxPins;
-
-    while(this.pins.length > this.maxPins){
-        const oldPin = this.pins.shift();
-        this.quadtree.removeObject(oldPin);
-        oldPin.remove();
-    }
-};
-
-Globe.prototype.setMaxMarkers = function(_maxMarkers){
-    this.maxMarkers = _maxMarkers;
-    while(this.markers.length > this.maxMarkers){
-        this.markers.shift().remove();
-    }
-};
-
-Globe.prototype.setBaseColor = function(_color){
-    this.baseColor = _color;
-    createParticles.call(this);
-};
-
-Globe.prototype.setScale = function(_scale){
-    this.scale = _scale;
-    this.cameraDistance = 1700/_scale;
-    if (this.scene && this.scene.fog){
-       this.scene.fog.near = this.cameraDistance;
-       this.scene.fog.far = this.cameraDistance + 300;
-       createParticles.call(this);
-       this.camera.far = this.cameraDistance + 300;
-       this.camera.updateProjectionMatrix();
-    }
-};
-
-Globe.prototype.tick = function(){
-
-    if (!this.camera){
-        return;
-    }
-
-    if (!this.firstRunTime){
-        this.firstRunTime = Date.now();
-    }
-
-    addInitialData.call(this);
-    TWEEN.update();
-
-    if (!this.lastRenderDate){
-        this.lastRenderDate = new Date();
-    }
-
-    if (!this.firstRenderDate){
-        this.firstRenderDate = new Date();
-    }
-
-    this.totalRunTime = new Date() - this.firstRenderDate;
-
-    const renderTime = new Date() - this.lastRenderDate;
-    this.lastRenderDate = new Date();
-    const rotateCameraBy = (2 * Math.PI)/(this.dayLength/renderTime);
-
-    this.cameraAngle += rotateCameraBy;
-
-    if (!this.active){
-        this.cameraDistance += (1000 * renderTime/1000);
-    }
-
-    this.camera.position.x = this.cameraDistance * Math.cos(this.cameraAngle) * Math.cos(this.viewAngle);
-    this.camera.position.y = Math.sin(this.viewAngle) * this.cameraDistance;
-    this.camera.position.z = this.cameraDistance * Math.sin(this.cameraAngle) * Math.cos(this.viewAngle);
-
-    for (let i in this.satellites){
-        this.satellites[i].tick(this.camera.position, this.cameraAngle, renderTime);
-    }
-
-    for (let i = 0; i< this.satelliteMeshes.length; i++){
-        const mesh = this.satelliteMeshes[i];
-        mesh.lookAt(this.camera.position);
-        mesh.rotateZ(mesh.tiltDirection * Math.PI/2);
-        mesh.rotateZ(Math.sin(this.cameraAngle + (mesh.lon / 180) * Math.PI) * mesh.tiltMultiplier * mesh.tiltDirection * -1);
-    }
-
-    if (this.introLinesDuration > this.totalRunTime){
-        if(this.totalRunTime/this.introLinesDuration < .1){
-            this.introLines.children[0].material.opacity = (this.totalRunTime/this.introLinesDuration) * (1 / .1) - .2;
-        }if(this.totalRunTime/this.introLinesDuration > .8){
-            this.introLines.children[0].material.opacity = Math.max(1-this.totalRunTime/this.introLinesDuration,0) * (1 / .2);
-        } else {
-            this.introLines.children[0].material.opacity = 1;
-        }
-        this.introLines.rotateY((2 * Math.PI)/(this.introLinesDuration/renderTime));
-    } else if(this.introLines){
-        this.scene.remove(this.introLines);
-        delete[this.introLines];
-    }
-
-    // do the shaders
-
-    this.pointUniforms.currentTime.value = this.totalRunTime;
-
-    this.smokeProvider.tick(this.totalRunTime);
-
-    this.camera.lookAt(this.scene.position);
-    this.renderer.render(this.scene, this.camera);
 }
 
 export default Globe;

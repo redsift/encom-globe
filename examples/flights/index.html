@@ -1,0 +1,82 @@
+<html>
+  <head>
+    <style>
+    
+    @import url('https://fonts.googleapis.com/css?family=Raleway:300');
+
+    body {
+      margin: 0px;
+    }
+
+    </style>    
+  </head>
+  <body>
+    <div id="elm"></div>
+        
+    <script src="https://d3js.org/d3.v4.min.js"></script>
+    <script src="/t3-rs-geo.umd-es2015.min.js"></script>
+    <script>
+
+    'use strict';
+/*
+        globe.addMarker(51.5074, -0.1278, "London");
+        globe.addMarker(50.1109, 8.6821, "Frankfurt", true);
+        { lat:51.5074,  lng:-0.1278,    label:"London"  },
+        { lat:55.95206, lng:-3.19648,   label:"Edinburgh"   },
+        { lat:52.52437, lng:13.41053,   label:"Berlin"      },
+        { lat:19.07283, lng:72.88261,   label:"Mumbai"  },
+*/
+    // Create globe with some intial data    
+    var initialData = [
+        { lat:25.77427, lng:-80.19366,  label:"Miami"   },
+        { lat:37.77493, lng:-122.41942, label:"San Francisco"   },
+        { lat:-23.5475, lng:-46.63611,   label:"Sao Paulo"      },
+        { lat:-12.04318,lng:-77.02824,  label:"Lima"    },
+        { lat:21.30694, lng:-157.85833, label:"Honolulu"},
+        { lat:-31.95224,lng:115.8614,   label:"Perth"   },
+        { lat:-33.86785,lng:151.20732,  label:"Sydney"  },
+        { lat: -42,     lng: 174,       label:"New Zealand" },
+        { lat:22.28552, lng:114.15769,  label:"Hong Kong"   },
+        { lat:30.06263, lng:31.24967,   label:"Cairo"   },
+        { lat:-33.92584,lng:18.42322,   label:"Cape Town"   },
+        { lat:55.75222, lng:37.61556,   label:"Moscow"      },        
+        { lat:35.6895,  lng:129.69171,   label:"Tokyo"      },
+    ];
+
+    var globe = new t3_rs_geo.ENCOM(window.innerWidth, window.innerHeight, {
+        data: initialData,
+        tiles: t3_rs_geo.GRID.tiles,
+    });
+
+    function tick() {
+        globe.tick();
+        requestAnimationFrame(tick);
+    }
+
+    d3.select('#elm').node().append(globe.domElement);
+    globe.init(function ready() {
+        // the ready function will be called once the
+        // globe is ready to animate
+
+        tick();
+
+        console.log('Animating');
+    });
+
+    setTimeout(function(){
+        globe.addMarker(51.5074, -0.1278, "London");
+        globe.addMarker(19.07283, 72.88261, "Mumbai", true);
+    }, 2000);  
+
+    // Handle window resize events
+    function onWindowResize(){
+        globe.camera.aspect = window.innerWidth / window.innerHeight;
+        globe.camera.updateProjectionMatrix();
+        globe.renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+    window.addEventListener('resize', onWindowResize, false);
+    
+
+    </script>
+  </body>
+</html>

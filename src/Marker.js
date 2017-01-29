@@ -73,7 +73,8 @@ function createLineTexture(line) {
 }
 
 function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
-
+    text = text || "";
+    
     this.lat = parseFloat(lat);
     this.lon = parseFloat(lon);
     this.altitude = parseFloat(altitude);
