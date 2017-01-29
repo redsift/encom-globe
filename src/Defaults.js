@@ -4,6 +4,7 @@ const Colors = {
     Background: '#000',
     Label: '#fff',
     Trail: '#eee',
+    Land: '#ffcc00',
     _Highlight: '#ff0000'
 };
 
@@ -63,6 +64,19 @@ export const Smoke = {
     PerSecond: 20
 };
 
+export const Satellites = {
+    Color: Colors._Highlight
+}
+
+export const Globes = {
+    Color: Colors.Land
+}
+
 export const View = {
-    Color: Colors.Background
+    Scale: 1.0,
+    Color: Colors.Background,
+    IntroLineColor: Colors.Pins,
+    IntroLineCount: 80,
+    IntroLineAltitude: 1.10,
+    IntroLineDuration_MS: 2000 
 };

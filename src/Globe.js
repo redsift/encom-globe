@@ -12,7 +12,7 @@ import Quadtree2 from 'quadtree2'
 import Vec2 from 'vec2'
 
 import { latLon2d, mapPoint } from './Utils'
-import { Render, View } from './Defaults'
+import { Render, View, Globes, Satellites } from './Defaults'
 
 import { default as Satellite } from './Satellite'
 import { default as Marker } from './Marker'
@@ -193,14 +193,13 @@ function createParticles() {
         geometry.groups.push(offset);
     }
 
-
     geometry.computeBoundingSphere();
    
     this.hexGrid = new Mesh( geometry, pointMaterial );
     this.scene.add(this.hexGrid);
 }
 
-function createIntroLines(){
+function createIntroLines() {
     let sPoint;
     const introLinesMaterial = new LineBasicMaterial({
         color: this.introLinesColor,
@@ -238,6 +237,9 @@ function createIntroLines(){
 
 function Globe(width, height, opts){
     opts = opts || {};
+    
+    this.data = opts.data || [];
+    this.tiles = opts.tiles || [];
 
     this.width = width;
     this.height = height;
@@ -256,37 +258,20 @@ function Globe(width, height, opts){
     this.quadtree.setKey('rad', 'rad_');
     // end hack
 
-    var defaults = {
-        font: "Inconsolata",
-        baseColor: "#ffcc00",
-        markerColor: "#ffcc00",
-        pinColor: "#00eeee",
-        satelliteColor: "#ff0000",
-        blankPercentage: 0,
-        introLinesAltitude: 1.10,
-        introLinesDuration: 2000,
-        introLinesColor: "#8FD8D8",
-        introLinesCount: 60,
-        scale: 1.0,
-        dayLength: 28000,
-        pointsPerDegree: 1.1,
-        pointSize: .6,
-        pointsVariance: .2,
-        maxPins: 500,
-        maxMarkers: 4,
-        data: [],
-        tiles: [],
-        viewAngle: 0
-    };
+    this.maxPins = 500;
+    this.maxMarkers = 4;
+    this.viewAngle = 0;
+    this.dayLength = 28000;
+   
+    this.scale = View.Scale;
 
-    for (let i in defaults){
-        if(!this[i]){
-            this[i] = defaults[i];
-            if(opts[i]){
-                this[i] = opts[i];
-            }
-        }
-    }
+    this.baseColor = opts.globeColor || Globes.Color;
+
+    this.introLinesAltitude = opts.introLinesAltitude || View.IntroLineAltitude;
+    this.introLinesDuration = opts.introLinesDuration || View.IntroLineDuration_MS;
+    this.introLinesColor = opts.introLinesColor || View.IntroLineColor;
+    this.introLinesCount = opts.introLinesCount || View.IntroLineCount;
+
 
     this.opts = opts;
     this.opts.background = this.opts.background || View.Color
@@ -316,10 +301,10 @@ function Globe(width, height, opts){
 
 Globe.prototype.init = function(cb){
     // create the camera
-    this.camera = new PerspectiveCamera( 50, this.width / this.height, 1, this.cameraDistance+300);
+    this.camera = new PerspectiveCamera(50, this.width / this.height, 1, this.cameraDistance+300);
     this.camera.position.z = this.cameraDistance;
 
-    this.cameraAngle=(Math.PI);
+    this.cameraAngle = Math.PI;
 
     // create the scene
     this.scene = new Scene();
@@ -420,7 +405,7 @@ Globe.prototype.addPin = function(lat, lon, text, opts) {
     return pin;
 }
 
-Globe.prototype.addMarker = function(lat, lon, text, connected, opts){
+Globe.prototype.addMarker = function(lat, lon, text, connected, opts) {
     let marker;
 
     if (connected === true) {
@@ -445,7 +430,7 @@ Globe.prototype.addSatellite = function(lat, lon, altitude, opts, texture, anima
      * redundant assets */
 
     opts = opts ||{};
-    opts.coreColor = opts.coreColor || this.satelliteColor;
+    opts.coreColor = opts.coreColor || Satellites.Color;
 
     const satellite = new Satellite(lat, lon, altitude, this.scene, opts, texture, animator);
 
@@ -497,16 +482,6 @@ Globe.prototype.setMaxMarkers = function(_maxMarkers){
 Globe.prototype.setBaseColor = function(_color){
     this.baseColor = _color;
     createParticles.call(this);
-};
-
-Globe.prototype.setMarkerColor = function(_color){
-    this.markerColor = _color;
-    this.scene.markerTexture = null;
-
-};
-
-Globe.prototype.setPinColor = function(_color){
-    this.pinColor = _color;
 };
 
 Globe.prototype.setScale = function(_scale){

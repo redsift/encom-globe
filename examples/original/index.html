@@ -32,19 +32,8 @@
                 }
 
                 globe = new t3_rs_geo.ENCOM(window.innerWidth, window.innerHeight, {
-                    font: "Inconsolata",
                     data: newData, // copy the data array
                     tiles: t3_rs_geo.GRID.tiles,
-                    baseColor: $("#globe-color").val(),
-                    markerColor: $("#marker-color").val(),
-                    pinColor: $("#pin-color").val(),
-                    satelliteColor: $("#satellite-color").val(),
-                    scale: parseFloat($("#globe-scale").val()),
-                    dayLength: 1000 * parseFloat($("#globe-spr").val()),
-                    introLinesDuration: parseFloat($("#globe-id").val()),
-                    maxPins: parseFloat($("#globe-mp").val()),
-                    maxMarkers: parseFloat($("#globe-mm").val()),
-                    viewAngle: parseFloat($("#globe-va").val())
                 });
 
                 $("#globe").append(globe.domElement);
