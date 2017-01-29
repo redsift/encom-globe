@@ -1,12 +1,15 @@
-var THREE = require('three');
+'use strict'
+
+import {
+    RepeatWrapping
+} from 'three';
 
 // based on http://stemkoski.github.io/Three.js/Texture-Animation.html
-var TextureAnimator = function(texture, tilesVert, tilesHoriz, numTiles, tileDispDuration, repeatAtTile) 
+export default function TextureAnimator(texture, tilesVert, tilesHoriz, numTiles, tileDispDuration, repeatAtTile) 
 {   
     // note: texture passed by reference, will be updated by the update function.
-
-    if(repeatAtTile == undefined){
-        this.repeatAtTile=-1;
+    if (repeatAtTile == null) {
+        this.repeatAtTile = -1;
     }
 
     this.shutDownFlag = (this.repeatAtTile < 0);
@@ -19,8 +22,8 @@ var TextureAnimator = function(texture, tilesVert, tilesHoriz, numTiles, tileDis
     //  usually equals tilesHoriz * tilesVert, but not necessarily,
     //  if there at blank tiles at the bottom of the spritesheet. 
     this.numberOfTiles = numTiles;
-    texture.wrapS = texture.wrapT = THREE.RepeatWrapping; 
-    texture.repeat.set( 1 / this.tilesHorizontal, 1 / this.tilesVertical );
+    texture.wrapS = texture.wrapT = RepeatWrapping; 
+    texture.repeat.set(1 / this.tilesHorizontal, 1 / this.tilesVertical);
 
     // how long should each image be displayed?
     this.tileDisplayDuration = tileDispDuration;
@@ -33,8 +36,7 @@ var TextureAnimator = function(texture, tilesVert, tilesHoriz, numTiles, tileDis
 
     texture.offset.y = 1;
 
-    this.update = function( milliSec )
-    {
+    this.update = (milliSec) => {
         this.currentDisplayTime += milliSec;
         while (!this.done && this.currentDisplayTime > this.tileDisplayDuration)
             {
@@ -53,11 +55,9 @@ var TextureAnimator = function(texture, tilesVert, tilesHoriz, numTiles, tileDis
                 }
             }
     };
-    this.shutDown = function(cb){
-        _this.shutDownFlag = true;
-        _this.shutDownCb = cb;
+
+    this.shutDown = (cb) => {
+        this.shutDownFlag = true;
+        this.shutDownCb = cb;
     }
-
-};
-
-module.exports = TextureAnimator;
+}
