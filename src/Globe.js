@@ -3,7 +3,7 @@
 import {
     ShaderMaterial, VertexColors, DoubleSide, BufferGeometry, BufferAttribute,
     PerspectiveCamera, Scene, Fog, Color, Mesh, LineBasicMaterial, Geometry,
-    Vector3, Line, Object3D, WebGLRenderer
+    Vector3, Line, Object3D, WebGLRenderer, ShaderChunk, UniformsUtils, UniformsLib
 } from 'three';
 
 import TWEEN from 'tween.js'
@@ -45,6 +45,7 @@ function createParticles() {
     }
 
     var pointVertexShader = [
+        '#define USE_FOG',
         "#define PI 3.141592653589793238462643",
         "#define DISTANCE 500.0",
         "#define INTRODURATION " + (parseFloat(this.introLinesDuration) + .00001),
@@ -52,9 +53,11 @@ function createParticles() {
         "attribute float lng;",
         "uniform float currentTime;",
         "varying vec4 vColor;",
+        ShaderChunk[ "fog_pars_vertex" ],
         "",
         "void main()",
         "{",
+        "vec4 mvPosition = modelViewMatrix * vec4( position, 1.0 );",
         "   vec3 newPos = position;",
         "   float opacityVal = 0.0;",
         "   float introStart = INTRODURATION * ((180.0 + lng)/360.0);",
@@ -70,24 +73,28 @@ function createParticles() {
         "   }",
         "   vColor = vec4( color, opacityVal );", //     set color associated to vertex; use later in fragment shader.
         "   gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0);",
+        ShaderChunk[ "fog_vertex" ],
         "}"
     ].join("\n");
 
     var pointFragmentShader = [
-        "varying vec4 vColor;",     
+        '#define USE_FOG',
+        "varying vec4 vColor;",  
+        ShaderChunk[ "common" ],
+        ShaderChunk[ "fog_pars_fragment" ],   
         "void main()", 
         "{",
         "   gl_FragColor = vColor;",
-        "   float depth = gl_FragCoord.z / gl_FragCoord.w;",
-        "   float fogFactor = smoothstep(" + parseInt(this.cameraDistance) +".0," + (parseInt(this.cameraDistance+300)) +".0, depth );",
-        "   vec3 fogColor = vec3(0.0);",
-        "   gl_FragColor = mix( vColor, vec4( fogColor, gl_FragColor.w ), fogFactor );",
+        ShaderChunk[ "fog_fragment" ],
         "}"
     ].join("\n");
 
     this.pointUniforms = {
-        currentTime: { type: 'f', value: 0.0}
-    }
+            fogNear: { value: this.cameraDistance },
+            fogFar: { value: this.cameraDistance + View.Depth },
+            fogColor: { value: new Color(this.opts.fog) },
+            currentTime: { type: 'f', value: 0.0}
+        };
 
     const pointMaterial = new ShaderMaterial( {
         uniforms:       this.pointUniforms,
@@ -120,18 +127,18 @@ function createParticles() {
     }
 
     const baseColorSet = pusherColor(this.baseColor).hueSet();
-    const myColors = []; //TODO: Map by height, population etc
+    const myColors = []; 
     for (let i = 0; i< baseColorSet.length; i++){
-        myColors.push(baseColorSet[i].shade(Math.random()/3.0));
+        myColors.push(baseColorSet[i].shade(Math.random()/3.0)); // tint will lighted vs shade
     }
 
     const addTriangle = (k, ax, ay, az, bx, by, bz, cx, cy, cz, lat, lng, color) => {
         const p = k * 3;
         const i = p * 3;
 
-        lng_values[p] = lng;
-        lng_values[p+1] = lng;
-        lng_values[p+2] = lng;
+        lng_values[ p ] = lng;
+        lng_values[ p+1 ] = lng;
+        lng_values[ p+2 ] = lng;
         
         positions[ i ]     = ax;
         positions[ i + 1 ] = ay;
@@ -163,7 +170,8 @@ function createParticles() {
         const t = this.tiles[i];
         const k = i * 4;
 
-        const colorIndex = Math.floor(Math.random()*myColors.length);
+        //TODO: Map by height, population etc based on something in the tile?
+        const colorIndex = Math.floor(Math.random() * myColors.length);
         const colorRGB = myColors[colorIndex].rgb();
         const color = new Color();
 
@@ -173,14 +181,11 @@ function createParticles() {
         addTriangle(k+1, t.b[0].x, t.b[0].y, t.b[0].z, t.b[2].x, t.b[2].y, t.b[2].z, t.b[3].x, t.b[3].y, t.b[3].z, t.lat, t.lon, color);
         addTriangle(k+2, t.b[0].x, t.b[0].y, t.b[0].z, t.b[3].x, t.b[3].y, t.b[3].z, t.b[4].x, t.b[4].y, t.b[4].z, t.lat, t.lon, color);
 
-        if(t.b.length > 5){ // for the occasional pentagon that i have to deal with
+        if (t.b.length > 5){ // for the occasional pentagon that i have to deal with
             addTriangle(k+3, t.b[0].x, t.b[0].y, t.b[0].z, t.b[5].x, t.b[5].y, t.b[5].z, t.b[4].x, t.b[4].y, t.b[4].z, t.lat, t.lon, color);
         }
-
     }
 
-    // todo: commented out
-    // geometry.offsets = [];
     const offsets = triangles / chunkSize;
 
     for (let i = 0; i < offsets; i++) {
@@ -301,7 +306,7 @@ function Globe(width, height, opts){
 
 Globe.prototype.init = function(cb){
     // create the camera
-    this.camera = new PerspectiveCamera(50, this.width / this.height, 1, this.cameraDistance+300);
+    this.camera = new PerspectiveCamera(50, this.width / this.height, 1, this.cameraDistance + View.Depth);
     this.camera.position.z = this.cameraDistance;
 
     this.cameraAngle = Math.PI;
@@ -309,7 +314,7 @@ Globe.prototype.init = function(cb){
     // create the scene
     this.scene = new Scene();
 
-    this.scene.fog = new Fog(this.opts.fog, this.cameraDistance, this.cameraDistance+300);
+    this.scene.fog = new Fog(this.opts.fog, this.cameraDistance, this.cameraDistance + View.Depth);
 
     createIntroLines.call(this);
 

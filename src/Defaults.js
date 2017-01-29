@@ -73,6 +73,7 @@ export const Globes = {
 }
 
 export const View = {
+    Depth: 350,
     Scale: 1.0,
     Color: Colors.Background,
     IntroLineColor: Colors.Pins,
