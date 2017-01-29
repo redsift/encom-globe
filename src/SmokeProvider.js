@@ -1,3 +1,5 @@
+'use strict'
+
 import {
     BufferGeometry, BufferAttribute, ShaderMaterial, Points, Color
 } from 'three';

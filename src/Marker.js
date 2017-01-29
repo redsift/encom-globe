@@ -1,21 +1,28 @@
-var THREE = require('three'),
-    TWEEN = require('tween.js'),
-    MeshLine = require('three.meshline'),
-    utils = require('./Utils'),
-    Defaults = require('./Defaults');
+'use strict'
+
+import {
+    Geometry, CanvasTexture, LineSegments, Mesh, LineBasicMaterial, SpriteMaterial, Sprite, Texture, 
+    Vector3, Color, AdditiveBlending, DoubleSide, Vector2
+} from 'three';
+
+import MeshLine from 'three.meshline'
+import TWEEN from 'tween.js'
+
+import { renderToCanvas, mapPoint, createLabel } from './Utils'
+import { Markers, Lines, Labels, Render } from './Defaults'
 
 const PI_2 = 2 * Math.PI;
 const SPOT_NEXT = 1.2;
 
 function createMarkerTexture(marker) {
     marker = marker || {};
-    marker.size = marker.size || Defaults.Markers.Canvas;
-    marker.color = marker.color || Defaults.Markers.Color;
-    marker.outer = marker.outer || Defaults.Markers.RadiusOuter;
-    marker.inner = marker.inner || Defaults.Markers.RadiusInner;
-    marker.stroke = marker.stroke || Defaults.Markers.StrokeOuter;
+    marker.size = marker.size || Markers.Canvas;
+    marker.color = marker.color || Markers.Color;
+    marker.outer = marker.outer || Markers.RadiusOuter;
+    marker.inner = marker.inner || Markers.RadiusInner;
+    marker.stroke = marker.stroke || Markers.StrokeOuter;
 
-    const canvas = utils.renderToCanvas(marker.size, marker.size, function(ctx) {
+    const canvas = renderToCanvas(marker.size, marker.size, function(ctx) {
         const arcW = marker.size / 2;
         const arcH = marker.size / 2;
 
@@ -30,16 +37,16 @@ function createMarkerTexture(marker) {
         ctx.fill();
     });
 
-    const texture = new THREE.CanvasTexture(canvas);
+    const texture = new CanvasTexture(canvas);
     texture.name = "marker";
     return texture;
 }
 
 function createLineTexture(line) {
     line = line || {};
-    line.size = line.size || Defaults.Lines.Canvas;
+    line.size = line.size || Lines.Canvas;
 
-    const canvas = utils.renderToCanvas(line.size, line.size, function (context) {
+    const canvas = renderToCanvas(line.size, line.size, function (context) {
         // creates a alpha modulation texture
         // that looks like Contrails
 
@@ -60,7 +67,7 @@ function createLineTexture(line) {
 
     });
 
-    const texture = new THREE.CanvasTexture(canvas);
+    const texture = new CanvasTexture(canvas);
     texture.name = "line";
 
     return texture;
@@ -84,37 +91,36 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
     opts = opts || {};
     this.opts = opts;
     this.opts.lines = this.opts.lines || {};
-    this.opts.lines.color = this.opts.lines.color || Defaults.Lines.Color;
-    this.opts.lines.segments = this.opts.lines.segments || Defaults.Lines.Segments;
-    this.opts.lines.opacity = this.opts.lines.opacity || Defaults.Lines.Opacity;
-    this.opts.lines.width = this.opts.lines.width || Defaults.Lines.Width;
-    this.opts.lines.dotwiggle = this.opts.lines.dotwiggle || Defaults.Lines.DotWiggle;
-
-    this.opts.drawTime = this.opts.drawTime || Defaults.Markers.Delay_MS;
+    this.opts.lines.color = this.opts.lines.color || Lines.Color;
+    this.opts.lines.segments = this.opts.lines.segments || Lines.Segments;
+    this.opts.lines.opacity = this.opts.lines.opacity || Lines.Opacity;
+    this.opts.lines.width = this.opts.lines.width || Lines.Width;
+    this.opts.lines.dotwiggle = this.opts.lines.dotwiggle || Lines.DotWiggle;
+    this.opts.lines.drawTime = this.opts.lines.drawTime || Lines.Draw_MS;
 
     this.opts.marker = this.opts.marker || {};
-    this.opts.marker.size = this.opts.marker.size || Defaults.Markers.Canvas;
-    this.opts.marker.opacity = this.opts.marker.opacity || Defaults.Markers.Opacity;
-    this.opts.marker.scale = this.opts.marker.scale || Defaults.Markers.Scale_MS;
+    this.opts.marker.size = this.opts.marker.size || Markers.Canvas;
+    this.opts.marker.opacity = this.opts.marker.opacity || Markers.Opacity;
+    this.opts.marker.scale = this.opts.marker.scale || Markers.Scale_MS;
 
     this.opts.label = this.opts.label || {};
     this.opts.label.font = this.opts.label.font || {};
     this.opts.label.underline = this.opts.label.underline || {};
-    this.opts.label.fade = this.opts.label.fade || Defaults.Labels.Fade_MS;
+    this.opts.label.fade = this.opts.label.fade || Labels.Fade_MS;
 
-    let point = utils.mapPoint(lat, lon);
+    let point = mapPoint(lat, lon);
 
     // -- marker the ()
     if (!scene.markerTexture) {
         scene.markerTexture = createMarkerTexture(this.opts.marker);
     }
 
-    let markerMaterial = new THREE.SpriteMaterial({ map: scene.markerTexture, 
+    let markerMaterial = new SpriteMaterial({ map: scene.markerTexture, 
                                                     opacity: this.opts.marker.opacity, 
                                                     depthTest: true, 
                                                     fog: true });
 
-    const marker = new THREE.Sprite(markerMaterial);
+    const marker = new Sprite(markerMaterial);
     this.marker = marker;
     this.marker.scale.set(0, 0);
     this.marker.position.set(point.x * altitude, point.y * altitude, point.z * altitude);
@@ -125,17 +131,17 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
                 .onUpdate(function() {
                     marker.scale.set(this.x, this.y);
                 })
-                .delay((this.previous ? this.opts.drawTime : 0))
+                .delay((this.previous ? this.opts.lines.drawTime : 0)) // the next marker only starts after line is done
                 .start();
     // -- end marker
 
     // -- text label
-    let labelCanvas = utils.createLabel(text.toUpperCase(), this.opts.label.font, this.opts.label.underline, this.opts.label.background);
-    let labelTexture = new THREE.Texture(labelCanvas);
+    let labelCanvas = createLabel(text.toUpperCase(), this.opts.label.font, this.opts.label.underline, this.opts.label.background);
+    let labelTexture = new Texture(labelCanvas);
     labelTexture.name = "marker-label"
     labelTexture.needsUpdate = true;
 
-    let labelMaterial = new THREE.SpriteMaterial({
+    let labelMaterial = new SpriteMaterial({
         map : labelTexture,
         opacity: 0,
         transparent: (this.opts.label.fade > 0),
@@ -143,9 +149,9 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
         fog: true
     });
 
-    this.labelSprite = new THREE.Sprite(labelMaterial);
+    this.labelSprite = new Sprite(labelMaterial);
     this.labelSprite.position.set(point.x * altitude * 1.1, point.y * altitude * 1.05 + (point.y < 0 ? -15 : 30), point.z * altitude * 1.1); 
-    this.labelSprite.scale.set(labelCanvas.width / Defaults.Render.PixelRatio, labelCanvas.height / Defaults.Render.PixelRatio);
+    this.labelSprite.scale.set(labelCanvas.width / Render.PixelRatio, labelCanvas.height / Render.PixelRatio);
 
     new TWEEN.Tween({opacity: 0})
                 .to({opacity: 1}, this.opts.label.fade)
@@ -156,12 +162,12 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
     // -- end text label
 
   if (this.previous) {
-        this.geometrySpline = new THREE.Geometry();
-        this.geometrySplineDotted = new THREE.Geometry();
+        this.geometrySpline = new Geometry();
+        this.geometrySplineDotted = new Geometry();
 
         let latdist = (lat - previous.lat) / this.opts.lines.segments;
         let londist = (lon - previous.lon) / this.opts.lines.segments;
-        let startPoint = utils.mapPoint(previous.lat,previous.lon);
+        let startPoint = mapPoint(previous.lat,previous.lon);
         let pointList = [];
         let pointList2 = [];
 
@@ -175,8 +181,8 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
                 pointList2.push({lat: nextlat+1, lon: nextlon, index: j});
             }
 
-            let sPoint = new THREE.Vector3(startPoint.x * SPOT_NEXT, startPoint.y * SPOT_NEXT, startPoint.z * SPOT_NEXT);
-            let sPoint2 = new THREE.Vector3(startPoint.x * SPOT_NEXT, startPoint.y * SPOT_NEXT, startPoint.z * SPOT_NEXT);
+            let sPoint = new Vector3(startPoint.x * SPOT_NEXT, startPoint.y * SPOT_NEXT, startPoint.z * SPOT_NEXT);
+            let sPoint2 = new Vector3(startPoint.x * SPOT_NEXT, startPoint.y * SPOT_NEXT, startPoint.z * SPOT_NEXT);
 
             sPoint.globe_index = j;
             sPoint2.globe_index = j;
@@ -200,14 +206,14 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
         const materialMeshSpline = new MeshLine.MeshLineMaterial({ 
             useMap: true,
             map: scene.lineTexture,
-            color: new THREE.Color(this.opts.lines.color),
+            color: new Color(this.opts.lines.color),
             opacity: this.opts.lines.opacity,
             lineWidth: this.opts.lines.width, 
             transparent: true,
-            blending: THREE.AdditiveBlending,
-            side: THREE.DoubleSide,
+            blending: AdditiveBlending,
+            side: DoubleSide,
             depthTest: false,
-            resolution: new THREE.Vector2(1024, 1024), // should be window height
+            resolution: new Vector2(1024, 1024), // should be window height
             sizeAttenuation: true,
             near: near,
             far: far,
@@ -215,7 +221,7 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
         });
         // -- end mesh line
         
-        const materialSplineDotted = new THREE.LineBasicMaterial({
+        const materialSplineDotted = new LineBasicMaterial({
             color: this.opts.lines.color,
             linewidth: 1,
             transparent: true,
@@ -230,10 +236,10 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
             for (let x = 0; x < this.geometrySpline.vertices.length; x++){
 
                 let currentVert = this.geometrySpline.vertices[x];
-                let currentPoint = utils.mapPoint(nextSpot.lat, nextSpot.lon);
+                let currentPoint = mapPoint(nextSpot.lat, nextSpot.lon);
 
                 let currentVert2 = this.geometrySplineDotted.vertices[x];
-                let currentPoint2 = utils.mapPoint(nextSpot2.lat, nextSpot2.lon);
+                let currentPoint2 = mapPoint(nextSpot2.lat, nextSpot2.lon);
 
                 if (x >= nextSpot.index) {
                     currentVert.set(currentPoint.x * SPOT_NEXT, currentPoint.y * SPOT_NEXT, currentPoint.z * SPOT_NEXT);
@@ -247,19 +253,19 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
             this.geometrySplineDotted.verticesNeedUpdate = true;
 
             if (pointList.length > 0){
-                setTimeout(update, this.opts.drawTime / this.opts.lines.segments);
+                setTimeout(update, this.opts.lines.drawTime / this.opts.lines.segments);
             }
         };
 
         update();
 
-        const trailMesh = new THREE.Mesh(this.meshLine.geometry, materialMeshSpline);
+        const trailMesh = new Mesh(this.meshLine.geometry, materialMeshSpline);
         trailMesh.frustumCulled = false;
 
         this.scene.add(trailMesh);
 
         if (this.opts.lines.dotwiggle !== 0) {
-            this.scene.add(new THREE.LineSegments(this.geometrySplineDotted, materialSplineDotted));
+            this.scene.add(new LineSegments(this.geometrySplineDotted, materialSplineDotted));
         }
     }
 
@@ -279,8 +285,8 @@ Marker.prototype.remove = function() {
         ref.geometrySpline.verticesNeedUpdate = true;
         ref.geometrySplineDotted.verticesNeedUpdate = true;
         x++;
-        if(x < ref.geometrySpline.vertices.length) {
-            setTimeout(() => update(ref), this.opts.drawTime / this.opts.lines.segments);
+        if (x < ref.geometrySpline.vertices.length) {
+            setTimeout(() => update(ref), this.opts.lines.drawTime / this.opts.lines.segments);
         } else {
             this.scene.remove(ref.geometrySpline);
             this.scene.remove(ref.geometrySplineDotted);
@@ -297,4 +303,4 @@ Marker.prototype.remove = function() {
     this.scene.remove(this.labelSprite);
 };
 
-module.exports = Marker;
+export default Marker;

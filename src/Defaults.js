@@ -10,9 +10,10 @@ export const Render = {
 export const Lines = {
     Canvas: 128,
     Color: Colors.Markers,
-    Segments: 150,
+    Segments: 256,
     Opacity: 0.7,
     Width: 6,
+    Draw_MS: 5000, // bounces in after text
     DotWiggle: 0 // how much the dotted line should wiggle from the solid   
 };
 
@@ -39,7 +40,6 @@ export const Markers = {
     StrokeOuter: 3,
     RadiusInner: 14,
     RadiusOuter: 22,
-    Delay_MS: Labels.Fade_MS, // bounces in after text
     Scale_MS: 2000
 }
 
