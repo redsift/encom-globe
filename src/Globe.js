@@ -14,7 +14,7 @@ import Vec2 from 'vec2'
 import { latLon2d, mapPoint } from './Utils'
 import { Render, View } from './Defaults'
 
-import Satellite from './Satellite'
+import { default as Satellite } from './Satellite'
 import { default as Marker } from './Marker'
 import { default as Pin } from './Pin'
 import { default as SmokeProvider } from './SmokeProvider'

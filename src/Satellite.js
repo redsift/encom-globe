@@ -1,7 +1,18 @@
+'use strict'
+
+import {
+    Mesh, MeshBasicMaterial, PlaneGeometry, Texture
+} from 'three';
+
+import { hexToRgb, renderToCanvas, mapPoint } from './Utils'
+
+import { default as TextureAnimator } from './TextureAnimator'
+
+/*
 var TextureAnimator = require('./TextureAnimator'),
     THREE = require('three'),
     utils = require('./Utils');
-
+*/
 
 var createCanvas = function(numFrames, pixels, rows, waveStart, numWaves, waveColor, coreColor, shieldColor) {
 
@@ -13,9 +24,9 @@ var createCanvas = function(numFrames, pixels, rows, waveStart, numWaves, waveCo
     var offsety = 0;
     var curRow = 0;
 
-    var waveColorRGB = utils.hexToRgb(waveColor);
+    var waveColorRGB = hexToRgb(waveColor);
 //TODO: This size if not pow(2), need utils.nearestPow2
-    return utils.renderToCanvas((numFrames * pixels / rows), (pixels * rows), function(ctx){
+    return renderToCanvas((numFrames * pixels / rows), (pixels * rows), function(ctx){
 
         for(var i = 0; i< numFrames; i++){
             if(i - curRow * cols >= cols){
@@ -133,7 +144,7 @@ var createCanvas = function(numFrames, pixels, rows, waveStart, numWaves, waveCo
 var Satellite = function(lat, lon, altitude, scene, _opts, canvas, texture){
 
     var geometry, 
-    point = utils.mapPoint(lat, lon),
+    point = mapPoint(lat, lon),
     opts,
     numFrames,
     pixels,
@@ -180,7 +191,7 @@ var Satellite = function(lat, lon, altitude, scene, _opts, canvas, texture){
 
     if(!canvas){
         this.canvas = createCanvas(numFrames, pixels, rows, waveStart, opts.numWaves, opts.waveColor, opts.coreColor, opts.shieldColor);
-        this.texture = new THREE.Texture(this.canvas);
+        this.texture = new Texture(this.canvas);
         this.texture.name = "satellite";
         this.texture.needsUpdate = true;
         repeatAt = Math.floor(numFrames-2*(numFrames-waveStart)/opts.numWaves)+1;
@@ -188,7 +199,7 @@ var Satellite = function(lat, lon, altitude, scene, _opts, canvas, texture){
     } else {
         this.canvas = canvas;
         if(!texture){
-            this.texture = new THREE.Texture(this.canvas)
+            this.texture = new Texture(this.canvas)
             this.texture.name = "satellite-c";
             this.texture.needsUpdate = true;
             repeatAt = Math.floor(numFrames-2*(numFrames-waveStart)/opts.numWaves)+1;
@@ -198,14 +209,14 @@ var Satellite = function(lat, lon, altitude, scene, _opts, canvas, texture){
         }
     }
 
-    geometry = new THREE.PlaneGeometry(opts.size * 150, opts.size * 150,1,1);
-    this.material = new THREE.MeshBasicMaterial({
+    geometry = new PlaneGeometry(opts.size * 150, opts.size * 150,1,1);
+    this.material = new MeshBasicMaterial({
         map : this.texture,
         depthTest: false,
         transparent: true
     });
 
-    this.mesh = new THREE.Mesh(geometry, this.material);
+    this.mesh = new Mesh(geometry, this.material);
     this.mesh.tiltMultiplier = Math.PI/2 * (1 - Math.abs(lat / 90));
     this.mesh.tiltDirection = (lat > 0 ? -1 : 1);
     this.mesh.lon = lon;
@@ -221,7 +232,7 @@ var Satellite = function(lat, lon, altitude, scene, _opts, canvas, texture){
 
 Satellite.prototype.changeAltitude = function(_altitude){
     
-    var newPoint = utils.mapPoint(this.lat, this.lon);
+    var newPoint = mapPoint(this.lat, this.lon);
     newPoint.x *= _altitude;
     newPoint.y *= _altitude;
     newPoint.z *= _altitude;
@@ -261,7 +272,7 @@ Satellite.prototype.changeCanvas = function(numWaves, waveColor, coreColor, shie
     }
 
     this.canvas = createCanvas(numFrames, pixels, rows, waveStart, numWaves, waveColor, coreColor, shieldColor);
-    this.texture = new THREE.Texture(this.canvas)
+    this.texture = new Texture(this.canvas)
     this.texture.name = "satellite-z";
     this.texture.needsUpdate = true;
     repeatAt = Math.floor(numFrames-2*(numFrames-waveStart)/numWaves)+1;
@@ -302,5 +313,4 @@ Satellite.prototype.toString = function(){
     return "" + this.lat + '_' + this.lon + '_' + this.altitude;
 };
 
-module.exports = Satellite;
-
+export default Satellite;
