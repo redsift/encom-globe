@@ -420,6 +420,8 @@ Globe.prototype.tick = function(){
     this.renderer.render(this.scene, this.camera);
 }
 
+//TODO: Atmosphere shader?
+// https://www.shadertoy.com/view/lslXDr
 Globe.prototype.createParticles = function () {
     if (this.hexGrid){
         this.scene.remove(this.hexGrid);
