@@ -23,13 +23,13 @@ export const Lines = {
 };
 
 export const Labels = {
-    TextFont: 'Raleway',
+    TextFont: 'Raleway', //TODO: Reactor
     TextColor: Colors.Label,
-    TextSize: 30,    
+    TextSize: 22,    
     TextPaddingX: 10,
     TextPaddingY: 10,
     TextStrokeStyle: Colors.Background,
-    TextStrokeWidth: 6,  
+    TextStrokeWidth: 3,  
     UnderlineWidth: 4,
     UnderlineOffset: 4,
     UnderlineColor: Colors.Markers,
@@ -83,5 +83,6 @@ export const View = {
     IntroLineAltitude: 1.10,
     IntroLineDuration_MS: introDuration_MS,
     IntroDataOffset_MS:  introDuration_MS,
-    IntroDataDuration_MS: introDuration_MS
+    IntroDataDuration_MS: introDuration_MS,
+    FontTimeout_MS: 10000
 };

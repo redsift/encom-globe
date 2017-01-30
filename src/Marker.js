@@ -8,7 +8,7 @@ import {
 import MeshLine from 'three.meshline'
 import TWEEN from 'tween.js'
 
-import { renderToCanvas, mapPoint, createLabel, PI_2 } from './Utils'
+import { renderToCanvas, mapPoint, createLabel, latLonHaversine, PI_2 } from './Utils'
 import { Markers, Lines, Labels, Render } from './Defaults'
 
 const SPOT_NEXT = 1.2;
@@ -74,7 +74,7 @@ function createLineTexture(line) {
 
 function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
     text = text || "";
-    
+
     this.lat = parseFloat(lat);
     this.lon = parseFloat(lon);
     this.altitude = parseFloat(altitude);
@@ -168,11 +168,20 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
         let latdist = (lat - previous.lat) / this.opts.lines.segments;
         let londist = (lon - previous.lon) / this.opts.lines.segments;
         let startPoint = mapPoint(previous.lat,previous.lon);
-        let pointList = [];
-        let pointList2 = [];
+        const pointList = [];
+        const pointList2 = [];
 
-        for (let j = 0; j< this.opts.lines.segments + 1; j++){
-            let nextlat = (((90 + previous.lat + j*latdist)%180)-90) * (.5 + Math.cos(j*(5*Math.PI/2)/this.opts.lines.segments)/2) + (j*lat/this.opts.lines.segments/2);
+        const meters = latLonHaversine(lat, lon, previous.lat, previous.lon);
+        
+        // 637766 = straight
+        // 6564392 = arc
+        for (let j = 0; j< this.opts.lines.segments + 1; j++) {
+
+            let nextlat = (((90 + previous.lat + j*latdist)%180)-90);
+            if  (meters > 3000000) { // TODO: hack, this could be better
+                nextlat = nextlat * (0.5 + Math.cos(j*(5*Math.PI/2)/this.opts.lines.segments)/2) + (j*lat/this.opts.lines.segments/2);
+            }
+
             let nextlon = ((180 + previous.lon + j*londist)%360)-180;
             pointList.push({lat: nextlat, lon: nextlon, index: j});
             if (j == 0 || j == this.opts.lines.segments){

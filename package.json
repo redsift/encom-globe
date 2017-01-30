@@ -19,6 +19,7 @@
   "author": "robscanlon@gmail.com",
   "license": "MIT",
   "dependencies": {
+    "FontLoader": "0.0.2",
     "hexasphere.js": "*",
     "pusher.color": "~0.2.4",
     "quadtree2": "https://github.com/redsift/quadtree2.js/tarball/master",

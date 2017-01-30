@@ -10,9 +10,10 @@ import TWEEN from 'tween.js'
 import pusherColor from 'pusher.color' // TODO: replace this one
 import Quadtree2 from 'quadtree2'
 import Vec2 from 'vec2'
+import FontLoader from 'FontLoader'
 
 import { latLon2d, mapPoint } from './Utils'
-import { Render, View, Globes, Satellites } from './Defaults'
+import { Render, View, Globes, Satellites, Labels } from './Defaults'
 
 import { default as Satellite } from './Satellite'
 import { default as Marker } from './Marker'
@@ -83,6 +84,7 @@ function Globe(width, height, opts){
     this.opts = opts;
     this.opts.background = this.opts.background || View.Color
     this.opts.fog = this.opts.fog || View.Color
+    this.opts.font = this.opts.font || Labels.TextFont
 
     this.setScale(this.scale);
 
@@ -99,14 +101,32 @@ function Globe(width, height, opts){
 
     this.data.sort((a,b) => (b.lng - b.label.length * 2) - (a.lng - a.label.length * 2));
 
-    for (let i = 0; i < this.data.length; i++){
+    for (let i = 0; i < this.data.length; i++) {
         this.data[i].when = this.introDataDuration * ((180.0 + this.data[i].lng) / 360.0) + this.introDataOffset; 
     }
+
+    this.ready = new Promise(function(ok, ko) {
+        // need to wait for fonts before we can render labels etc
+        const fontLoader = new FontLoader([ opts.font ], {
+            complete: function(error) {
+                if (error != null) {
+                    ko(error);
+                } else {
+                    ok();
+                }
+            }
+        }, View.FontTimeout_MS);
+        fontLoader.loadFonts();        
+    });
+
+    this.ready.then(() => this.init());
 }
 
-/* public globe functions */
-
-Globe.prototype.init = function(cb){
+/* 
+ * Init or re-init the globe
+ *  
+ * */
+Globe.prototype.init = function() {
     // create the camera
     this.camera = new PerspectiveCamera(50, this.width / this.height, 1, this.cameraDistance + View.Depth);
     this.camera.position.z = this.cameraDistance;
@@ -123,11 +143,9 @@ Globe.prototype.init = function(cb){
 
     this.createIntroLines();
     this.createParticles();
-
-    setTimeout(cb, 500);
 };
 
-Globe.prototype.destroy = function(callback){
+Globe.prototype.destroy = function(callback) {
     this.active = false;
 
     setTimeout(() => {
@@ -138,6 +156,12 @@ Globe.prototype.destroy = function(callback){
             callback();
         }
     }, 1000);
+};
+
+Globe.prototype.resize = function(width, height) {
+    this.camera.aspect = width / height;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(width, height);
 };
 
 Globe.prototype.addPin = function(lat, lon, text, opts) {
@@ -210,6 +234,14 @@ Globe.prototype.addPin = function(lat, lon, text, opts) {
 
     return pin;
 }
+
+Globe.prototype.smoke  = function(value) {
+    if (value === true) {
+        this.pins.forEach(p => p.showSmoke());
+    } else {
+        this.pins.forEach(p => p.hideSmoke());
+    }
+}  
 
 //TODO: Clean up this API
 Globe.prototype.addMarker = function(lat, lon, text, connected, opts) {
@@ -333,8 +365,12 @@ Globe.prototype.tick = function(){
 
     const renderTime = new Date() - this.lastRenderDate;
     this.lastRenderDate = new Date();
-    const rotateCameraBy = (2 * Math.PI)/(this.dayLength/renderTime);
-
+    let rotateCameraBy = 0;
+    
+    if (this.dayLength > 0) {
+        rotateCameraBy = (2 * Math.PI)/(this.dayLength/renderTime);
+    }
+    
     this.cameraAngle += rotateCameraBy;
 
     if (!this.active){

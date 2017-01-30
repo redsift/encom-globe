@@ -5,6 +5,7 @@ const SHORTHANG_REGEX = /^#?([a-f\d])([a-f\d])([a-f\d])$/i;
 const GROUP_REGEX = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i;
 
 export const PI_2 = 2 * Math.PI;
+export const DEG_TO_RAD = Math.PI / 180
 
 export function hexToRgb(hex) {
     // Expand shorthand form (e.g. "03F") to full form (e.g. "0033FF")
@@ -35,21 +36,36 @@ export function mapPoint(lat, lng, scale) {
     var x = scale * Math.sin(phi) * Math.cos(theta);
     var y = scale * Math.cos(phi);
     var z = scale * Math.sin(phi) * Math.sin(theta);
-    return {x: x, y: y, z:z};
+    return {x: x, y: y, z: z};
 }
 
 export function latLonToXYZ(width, height, lat, lon) {
     const x = Math.floor(width/2.0 + (width/360.0)*lon);
     const y = Math.floor((height/2.0 + (height/180.0)*lat));
 
-    return {x: x, y:y};
+    return {x: x, y: y};
 }
 
 export function latLon2d(lat, lon) {
     const rad = 2 + (Math.abs(lat)/90) * 15;
-    return {x: lat+90, y:lon + 180, rad: rad};
+    return {x: lat+90, y: lon + 180, rad: rad};
 }
 
+// calculate distances
+export function latLonHaversine(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // metres
+    const lat1r = lat1 * DEG_TO_RAD;
+    const lat2r = lat2 * DEG_TO_RAD;
+    const latd = (lat2 - lat1) * DEG_TO_RAD;
+    const lond = (lon2 - lon1) * DEG_TO_RAD;
+
+    const a = Math.sin(latd/2) * Math.sin(latd/2) +
+            Math.cos(lat1r) * Math.cos(lat2r) *
+            Math.sin(lond/2) * Math.sin(lond/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c;
+}
 
 export function renderToCanvas(width, height, renderFunction) {
     const canvas = document.createElement('canvas');

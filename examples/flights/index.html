@@ -8,6 +8,11 @@
       margin: 0px;
     }
 
+    #elm > canvas {
+        pointer-events: all;
+        cursor: move;
+    }
+
     </style>    
   </head>
   <body>
@@ -25,6 +30,7 @@
         { lat:55.95206, lng:-3.19648,   label:"Edinburgh"   },
         { lat:52.52437, lng:13.41053,   label:"Berlin"      },
         { lat:19.07283, lng:72.88261,   label:"Mumbai"  },
+        { lat:35.6895,  lng:129.69171,   label:"Tokyo"      },
 */
     // Create globe with some intial data    
     var initialData = [
@@ -40,7 +46,6 @@
         { lat:30.06263, lng:31.24967,   label:"Cairo"   },
         { lat:-33.92584,lng:18.42322,   label:"Cape Town"   },
         { lat:55.75222, lng:37.61556,   label:"Moscow"      },        
-        { lat:35.6895,  lng:129.69171,   label:"Tokyo"      },
     ];
 
     var globe = new t3_rs_geo.ENCOM(window.innerWidth, window.innerHeight, {
@@ -48,34 +53,58 @@
         tiles: t3_rs_geo.GRID.tiles,
     });
 
-    function tick() {
-        globe.tick();
-        requestAnimationFrame(tick);
-    }
-
     d3.select('#elm').node().append(globe.domElement);
-    globe.init(function ready() {
-        // the ready function will be called once the
-        // globe is ready to animate
 
-        tick();
+    globe.ready
+    .then(() => {
+        // we are ready
 
-        console.log('Animating');
-    });
+        (function tick() {
+            globe.tick();
+            requestAnimationFrame(tick);
+        })();
 
-    setTimeout(function(){
-        globe.addMarker(51.5074, -0.1278, "London");
-        globe.addMarker(19.07283, 72.88261, "Mumbai", true);
-    }, 2000);  
+        setTimeout(function(){
+            globe.addMarker(51.5074, -0.1278, "London");
+            globe.addMarker(50.1109, 8.6821, "Frankfurt", true);
+        }, 2000);  
+        setTimeout(function(){
+            globe.addMarker(19.07283, 72.88261, "Mumbai", true);
+        }, (2000 + 5000));  
 
-    // Handle window resize events
-    function onWindowResize(){
-        globe.camera.aspect = window.innerWidth / window.innerHeight;
-        globe.camera.updateProjectionMatrix();
-        globe.renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-    window.addEventListener('resize', onWindowResize, false);
-    
+        // Handle window resize events
+        window.addEventListener('resize', 
+                    (onWindowResize) => globe.resize(window.innerWidth, window.innerHeight)
+                    , false);
+        
+        var autoRotate;
+        var autoDayLength = globe.dayLength
+        // Handle dragging
+        d3.selectAll('#elm > canvas').call(d3.drag()
+            .on('start', () => {
+                // stop the auto-rotation
+                clearTimeout(autoRotate);
+                globe.dayLength = 0;
+                // stop the trails
+                globe.smoke(false);
+            })
+            .on('drag', () => {
+                globe.cameraAngle += (d3.event.dx * 0.001); //TODO: ratio
+                var newA = globe.viewAngle + (d3.event.dy * 0.001); 
+                globe.viewAngle = Math.max(Math.min(newA, Math.PI / 2.0), -Math.PI / 2.0);
+            })
+            .on('end', () => {
+                // Start spinning again after 3 seconds
+                autoRotate = setTimeout(() => { 
+                    globe.dayLength = autoDayLength; 
+                    globe.smoke(true);
+                }, 3000);
+            })
+        );
+
+    })
+    .catch(e => console.error(e));
+
 
     </script>
   </body>
