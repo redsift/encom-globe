@@ -80,7 +80,8 @@
         var autoRotate;
         var autoDayLength = globe.dayLength
         // Handle dragging
-        d3.selectAll('#elm > canvas').call(d3.drag()
+        d3.selectAll('#elm > canvas')
+        .call(d3.drag()
             .on('start', () => {
                 // stop the auto-rotation
                 clearTimeout(autoRotate);
@@ -100,12 +101,16 @@
                     globe.smoke(true);
                 }, 3000);
             })
+        )
+        .call(d3.zoom()
+            .scaleExtent([ 0.77, 2 ])
+            .on('zoom', () => {
+                globe.setScale(d3.event.transform.k);
+            })
         );
-
     })
     .catch(e => console.error(e));
-
-
+    
     </script>
   </body>
 </html>

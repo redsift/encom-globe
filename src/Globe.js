@@ -251,13 +251,13 @@ Globe.prototype.addMarker = function(lat, lon, text, connected, opts) {
         lat = lat.lat;
     }
     let marker;
-
+    const scale = () => this.scale;
     if (connected === true) {
-        marker = new Marker(lat, lon, text, 1.2, this.markers[this.markers.length-1], this.scene, this.camera.near, this.camera.far, opts);
+        marker = new Marker(lat, lon, text, 1.2, scale, this.markers[this.markers.length-1], this.scene, this.camera.near, this.camera.far, opts);
     } else if(typeof connected == "object"){
-        marker = new Marker(lat, lon, text, 1.2, connected, this.scene, this.camera.near, this.camera.far, opts);
+        marker = new Marker(lat, lon, text, 1.2, scale, connected, this.scene, this.camera.near, this.camera.far, opts);
     } else {
-        marker = new Marker(lat, lon, text, 1.2, null, this.scene, this.camera.near, this.camera.far, opts);
+        marker = new Marker(lat, lon, text, 1.2, scale, null, this.scene, this.camera.near, this.camera.far, opts);
     }
 
     this.markers.push(marker);
@@ -330,12 +330,16 @@ Globe.prototype.setBaseColor = function(_color){
 
 Globe.prototype.setScale = function(_scale){
     this.scale = _scale;
+
+    this.markers.forEach(m => m.rescale(_scale)); // rescale the markers to look good
+
     this.cameraDistance = 1700/_scale;
     if (this.scene && this.scene.fog){
        this.scene.fog.near = this.cameraDistance;
-       this.scene.fog.far = this.cameraDistance + 300;
-       this.createParticles();
-       this.camera.far = this.cameraDistance + 300;
+       this.scene.fog.far = this.cameraDistance + View.Depth;
+//     TODO: Update fog values
+//     this.createParticles();
+       this.camera.far = this.cameraDistance + View.Depth;
        this.camera.updateProjectionMatrix();
     }
 };

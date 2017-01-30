@@ -72,12 +72,17 @@ function createLineTexture(line) {
     return texture;
 }
 
-function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
+function attenuateScale(scale) {
+    return Math.pow(Math.max(scale, 1), 2.5)
+}
+
+function Marker(lat, lon, text, altitude, scale, previous, scene, near, far, opts) {
     text = text || "";
 
     this.lat = parseFloat(lat);
     this.lon = parseFloat(lon);
     this.altitude = parseFloat(altitude);
+    this.scale = scale;
 
     this.text = text;
     this.scene = scene;
@@ -129,7 +134,8 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
                 .to({x: this.opts.marker.size, y: this.opts.marker.size}, this.opts.marker.scale)
                 .easing(TWEEN.Easing.Elastic.Out)
                 .onUpdate(function() {
-                    marker.scale.set(this.x, this.y);
+                    const s = attenuateScale(scale());
+                    marker.scale.set(this.x / s, this.y / s);
                 })
                 .delay((this.previous ? this.opts.lines.drawTime : 0)) // the next marker only starts after line is done
                 .start();
@@ -151,7 +157,12 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
 
     this.labelSprite = new Sprite(labelMaterial);
     this.labelSprite.position.set(point.x * altitude * 1.1, point.y * altitude * 1.05 + (point.y < 0 ? -15 : 30), point.z * altitude * 1.1); 
-    this.labelSprite.scale.set(labelCanvas.width / Render.PixelRatio, labelCanvas.height / Render.PixelRatio);
+    
+    this.labelScale = {
+        x: labelCanvas.width / Render.PixelRatio,
+        y: labelCanvas.height / Render.PixelRatio
+    };
+    this.labelSprite.scale.set(this.labelScale.x / scale(), this.labelScale.y / scale());
 
     new TWEEN.Tween({opacity: 0})
                 .to({opacity: 1}, this.opts.label.fade)
@@ -173,14 +184,16 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
 
         const meters = latLonHaversine(lat, lon, previous.lat, previous.lon);
         
-        // 637766 = straight
-        // 6564392 = arc
         for (let j = 0; j< this.opts.lines.segments + 1; j++) {
 
+            // lat is wiggled but too much wiggle looks odd at 
+            // 637766 = straight
+            // 6564392 = arc
             let nextlat = (((90 + previous.lat + j*latdist)%180)-90);
-            if  (meters > 3000000) { // TODO: hack, this could be better
+            if (meters > 3000000) { // TODO: hack, this could be better
                 nextlat = nextlat * (0.5 + Math.cos(j*(5*Math.PI/2)/this.opts.lines.segments)/2) + (j*lat/this.opts.lines.segments/2);
             }
+
 
             let nextlon = ((180 + previous.lon + j*londist)%360)-180;
             pointList.push({lat: nextlat, lon: nextlon, index: j});
@@ -221,7 +234,7 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
             transparent: true,
             blending: AdditiveBlending,
             side: DoubleSide,
-            depthTest: false,
+            depthTest: false, //todo: odd blend when depth test is true
             resolution: new Vector2(1024, 1024), // should be window height
             sizeAttenuation: true,
             near: near,
@@ -280,6 +293,16 @@ function Marker(lat, lon, text, altitude, previous, scene, near, far, opts) {
 
     this.scene.add(this.marker);
     this.scene.add(this.labelSprite);
+}
+
+Marker.prototype.rescale = function(scale) {
+    //todo: wrong when tweening, should cancel
+    scale = attenuateScale(scale);
+    if (this.marker.scale.x > 0) {
+        // do this
+        this.marker.scale.set(this.opts.marker.size / scale, this.opts.marker.size / scale);
+    }
+    this.labelSprite.scale.set(this.labelScale.x / scale, this.labelScale.y / scale);
 }
 
 Marker.prototype.remove = function() {
