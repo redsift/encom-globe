@@ -1,25 +1,23 @@
 #!/usr/bin/env node
 
-
-
 var argv = require('minimist')(process.argv.slice(2)),
     PNG = require('pngjs').PNG,
-    fs = require('fs');
-
-var Hexasphere = require('hexasphere.js');
+    fs = require('fs'),
+    Hexasphere = require('hexasphere.js');
 
 var radius = 30;
 var numDivisions = 35;
 var scale = .45; 
+var tiny = argv.t;
 var map = argv.m;
 
-if(argv.r){
+if (argv.r) {
     radius = parseInt(argv.r);
 }
-if(argv.d){
+if (argv.d) {
     numDivisions = parseInt(argv.d);
 }
-if(argv.s){
+if (argv.s) {
     scale = parseFloat(argv.s);
 }
 
@@ -43,6 +41,11 @@ var rnd = function(num){
     return Math.round(num * 100) / 100;
 };
 
+// use a smaller representation of the tiles
+function compress(t) {
+    return t;
+}
+
 fs.createReadStream(map)
     .pipe(new PNG({
         filterType: 4
@@ -64,21 +67,12 @@ fs.createReadStream(map)
 
             var size = (count/(hexasphere.tiles[i].boundary.length + 1))/255;
 
-            if(size > .1){
-
-                /*
-                var c = {
-                    x: rnd(hexasphere.tiles[i].centerPoint.x),
-                    y: rnd(hexasphere.tiles[i].centerPoint.y),
-                    z: rnd(hexasphere.tiles[i].centerPoint.z)
-                };
-               */
-
+            if (size > .1){
                 var tile = {lat: rnd(latLon.lat), lon: rnd(latLon.lon), b: [] };
                 var scale = size - Math.random() * .25;
 
-                for(var j = 0; j< hexasphere.tiles[i].boundary.length; j++){
-                    var newPoint = hexasphere.tiles[i].boundary[j].segment(hexasphere.tiles[i].centerPoint, size);
+                for (let j = 0; j< hexasphere.tiles[i].boundary.length; j++){
+                    let newPoint = hexasphere.tiles[i].boundary[j].segment(hexasphere.tiles[i].centerPoint, size);
                     tile.b.push({
                         x: rnd(newPoint.x),
                         y: rnd(newPoint.y),
@@ -86,17 +80,19 @@ fs.createReadStream(map)
                     });
                 }
 
-                o.tiles.push(tile);
+                o.tiles.push(tiny ? compress(tile) : tile);
             }
         }
+        let json = null;
+        if (tiny) {
+            json = JSON.stringify(o);
+        } else {
+            json = JSON.stringify(o, null, 4);
+        }
+        const output = "export const tiles = " + json + ";";
 
-        var output = "export const tiles = " + JSON.stringify(o) + ";";
-
-        if(argv.o){
-            var fs = require('fs');
-
+        if (argv.o) {
             fs.writeFile(argv.o, output);
-
         } else {
             console.log(output);
         }

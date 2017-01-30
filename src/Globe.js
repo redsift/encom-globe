@@ -422,6 +422,8 @@ Globe.prototype.tick = function(){
 
 //TODO: Atmosphere shader?
 // https://www.shadertoy.com/view/lslXDr
+//TODO: Sea shader?
+// https://www.shadertoy.com/view/Ms2SD1
 Globe.prototype.createParticles = function () {
     if (this.hexGrid){
         this.scene.remove(this.hexGrid);
