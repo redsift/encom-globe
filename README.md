@@ -1,3 +1,27 @@
+TODO
+
+1. Break out grid
+1. Implement tiny format
+1. Merge scale indicator
+1. Ocean mesh
+1. CI
+
+1. Hit testing and callback
+1. Fog scaling
+1. Higher res con trails
+1. Noise in trail
+1. Normalise speed 
+1. Path direction
+1. Programmatic panning and animated transitions
+1. Animate base color 
+1. Make wiggle a scale function 
+1. HDR function
+1. Align API
+1. Atmosphere shader
+1. Ocean shader
+1. CI and rename
+1. Docs / examples
+
 The **Encom Globe** is a WebGL-based clone of the globe from the boardroom scene in [Tron: Legacy](http://www.imdb.com/title/tt1104001/).  If you don't recall that scene, check out [Bradley Munkowitz's excellent writeup](http://work.gmunk.com/TRON-Board-Room) about its production for more information.
 
 This version attempts to stay as true to the in-movie original as possible while maintaining a high frame rate on low powered machines and devices.  It is getting *pretty close* to acheiving that goal and mimics most of the details seen on screen, including the loading animations for the globe hexagon particles, the satellites, and the markers.
