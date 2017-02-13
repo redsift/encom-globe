@@ -1,8 +1,8 @@
 TODO
 
-1. Break out grid
 1. Implement tiny format
 1. Merge scale indicator
+1. Larger dot densities fail
 1. Ocean mesh
 1. CI
 

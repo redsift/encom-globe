@@ -108,7 +108,7 @@ gulp.task('browser-sync', function() {
 });
 
 gulp.task('serve', ['default', 'browser-sync'], function() {
-    gulp.watch(['./*.js', './src/*.js'], [ 'umd' ]);
+    gulp.watch(['./*.js', './src/*.js', './tiles/*.js'], [ 'umd' ]);
     gulp.watch('./distribution/*.js').on('change', () => browserSync.reload('*.js'));
     gulp.watch('./examples/**/*.html').on('change', () => browserSync.reload('*.html'));
 });

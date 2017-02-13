@@ -4,8 +4,8 @@
   "description": "encom-globe",
   "main": "src/Globe.js",
   "scripts": {
-    "serve": "gulp -o t3-rs-geo serve",
-    "build": "gulp -o t3-rs-geo build",
+    "serve": "node --max-old-space-size=4096 ./node_modules/.bin/gulp -o t3-rs-geo serve",
+    "build": "node --max-old-space-size=4096 ./node_modules/.bin/gulp -o t3-rs-geo build",
     "grid": "bin/buildgrid -r 500 -o tiles/grid.js -m resources/equirectangle_projection.png",
     "pretest": "npm outdated || true && npm run build",
     "test": "tape 'test/**/*-test.js'",
