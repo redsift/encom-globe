@@ -556,12 +556,22 @@ Globe.prototype.createParticles = function () {
         const k = i * 4;
 
         //TODO: Map by height, population etc based on something in the tile?
-        const colorIndex = Math.floor(Math.random() * myColors.length);
+        let v = t.v;
+        if (v == null) {
+            v = Math.random();
+        }
+
+        const colorIndex = Math.floor(v * (myColors.length - 1));
+
         const colorRGB = myColors[colorIndex].rgb();
         const color = new Color();
 
-        color.setRGB(colorRGB[0]/255.0, colorRGB[1]/255.0, colorRGB[2]/255.0);
-
+        if (t.a) {
+            color.setRGB(3.0/255.0, 21.0/255.0, 61.0/255.0);
+        } else {
+            color.setRGB(colorRGB[0]/255.0, colorRGB[1]/255.0, colorRGB[2]/255.0);
+        }
+    
         addTriangle(k, t.b[0].x, t.b[0].y, t.b[0].z, t.b[1].x, t.b[1].y, t.b[1].z, t.b[2].x, t.b[2].y, t.b[2].z, t.lat, t.lon, color);
         addTriangle(k+1, t.b[0].x, t.b[0].y, t.b[0].z, t.b[2].x, t.b[2].y, t.b[2].z, t.b[3].x, t.b[3].y, t.b[3].z, t.lat, t.lon, color);
         addTriangle(k+2, t.b[0].x, t.b[0].y, t.b[0].z, t.b[3].x, t.b[3].y, t.b[3].z, t.b[4].x, t.b[4].y, t.b[4].z, t.lat, t.lon, color);
