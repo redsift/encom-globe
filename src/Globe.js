@@ -3,7 +3,8 @@
 import {
     ShaderMaterial, VertexColors, DoubleSide, BufferGeometry, BufferAttribute,
     PerspectiveCamera, Scene, Fog, Color, Mesh, LineBasicMaterial, Geometry,
-    Vector3, Line, Object3D, WebGLRenderer, ShaderChunk
+    Vector3, Line, Object3D, WebGLRenderer, ShaderChunk, 
+    VertexNormalsHelper
 } from 'three';
 
 import TWEEN from 'tween.js'
@@ -493,23 +494,14 @@ Globe.prototype.createParticles = function () {
     const geometry = new BufferGeometry();
 
     const triangles = this.tiles.length * 4;
-    const indices = new Uint16Array(triangles * 3);
 
     const lng_values = new Float32Array(triangles * 3);
     const positions = new Float32Array(triangles * 3 * 3);
-    const normals = new Float32Array(triangles * 3 * 3);
     const colors = new Float32Array(triangles * 3 * 3);
 
-    geometry.setIndex( new BufferAttribute( indices, 1 ) );
     geometry.addAttribute( 'position', new BufferAttribute( positions, 3 ) );
-    geometry.addAttribute( 'normal', new BufferAttribute( normals, 3 ) );
     geometry.addAttribute( 'color', new BufferAttribute( colors, 3 ) );
     geometry.addAttribute( 'lng', new BufferAttribute( lng_values, 1 ) );
-
-
-    for (let i = 0; i < indices.length; i++) {
-        indices[i] = i % (3*chunkSize);
-    }
 
     const baseColorSet = pusherColor(this.baseColor).hueSet();
     const myColors = []; 
@@ -594,9 +586,13 @@ Globe.prototype.createParticles = function () {
     }
 
     geometry.computeBoundingSphere();
-   
+    geometry.computeVertexNormals();
+
     this.hexGrid = new Mesh( geometry, pointMaterial );
     this.scene.add(this.hexGrid);
+    /* Display mesh normals for debugging
+    this.scene.add(new VertexNormalsHelper(this.hexGrid, 10, 0x00ff00, 1));
+     */
 }
 
 Globe.prototype.createIntroLines = function () {
