@@ -3,8 +3,8 @@ export {
 } from "./package.json";
 
 export {
-  tiles as GRID
-} from "./tiles/grid.js";
+  tiles as GRID_LQ
+} from "./tiles/grid-lq.json";
 
 export {
   default as ENCOM

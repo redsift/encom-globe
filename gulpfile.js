@@ -56,7 +56,7 @@ gulp.task('umd', task.umd = () => {
             sourceMap: true,
             plugins: [ 
                         json({
-                            include: [ '**/package.json', 'node_modules/**/*.json' ], 
+                            include: [ '**/package.json', 'tiles/*.json', 'node_modules/**/*.json' ], 
                             exclude: [  ]
                         }),
                         string({
@@ -101,15 +101,16 @@ gulp.task('umd', task.umd = () => {
 gulp.task('browser-sync', function() {
     browserSync.init({
         server: {
-            baseDir: [ './examples', './distribution' ],
+            baseDir: [ './examples', './distribution', './tiles' ],
             directory: true
         }
     });
 });
 
 gulp.task('serve', ['default', 'browser-sync'], function() {
-    gulp.watch(['./*.js', './src/*.js', './tiles/*.js'], [ 'umd' ]);
+    gulp.watch(['./*.js', './src/*.js', './tiles/grid-lq.json'], [ 'umd' ]);
     gulp.watch('./distribution/*.js').on('change', () => browserSync.reload('*.js'));
+    gulp.watch('./tiles/*.json').on('change', () => browserSync.reload('*.html'));
     gulp.watch('./examples/**/*.html').on('change', () => browserSync.reload('*.html'));
 });
 
