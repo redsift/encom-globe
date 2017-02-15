@@ -27,6 +27,15 @@ import { default as SmokeProvider } from './SmokeProvider'
 // floor(2^16 / 3) = 21845
 const chunkSize = 21845;
 
+// Array index for Tiny format
+const TINY = {
+    V: 0,
+    A: 1,
+    T: 2,
+    L: 3,
+    B: 4
+};
+
 function addInitialData() {
     let next = null;
     if (this.data.length == 0){
@@ -516,7 +525,7 @@ Globe.prototype.createParticles = function () {
         lng_values[ p ] = lng;
         lng_values[ p+1 ] = lng;
         lng_values[ p+2 ] = lng;
-        
+
         positions[ i ]     = ax;
         positions[ i + 1 ] = ay;
         positions[ i + 2 ] = az;
@@ -547,8 +556,8 @@ Globe.prototype.createParticles = function () {
         const t = this.tiles[i];
         const k = i * 4;
 
-        //TODO: Map by height, population etc based on something in the tile?
-        let v = t.v;
+        //Map by height, population etc based on something in the tile
+        let v = t[TINY.V];
         if (v == null) {
             v = Math.random();
         }
@@ -558,19 +567,33 @@ Globe.prototype.createParticles = function () {
         const colorRGB = myColors[colorIndex].rgb();
         const color = new Color();
 
-        if (t.a) {
+        if (t[TINY.A]) {
             color.setRGB(3.0/255.0, 21.0/255.0, 61.0/255.0);
         } else {
             color.setRGB(colorRGB[0]/255.0, colorRGB[1]/255.0, colorRGB[2]/255.0);
         }
-    
-        addTriangle(k, t.b[0].x, t.b[0].y, t.b[0].z, t.b[1].x, t.b[1].y, t.b[1].z, t.b[2].x, t.b[2].y, t.b[2].z, t.lat, t.lon, color);
-        addTriangle(k+1, t.b[0].x, t.b[0].y, t.b[0].z, t.b[2].x, t.b[2].y, t.b[2].z, t.b[3].x, t.b[3].y, t.b[3].z, t.lat, t.lon, color);
-        addTriangle(k+2, t.b[0].x, t.b[0].y, t.b[0].z, t.b[3].x, t.b[3].y, t.b[3].z, t.b[4].x, t.b[4].y, t.b[4].z, t.lat, t.lon, color);
+        
+        for (let s = 0; s < 3; s++) {
+            addTriangle(k + s,  t[TINY.B+(3*0)+0],      t[TINY.B+(3*0)+1],      t[TINY.B+(3*0)+2], 
+                                t[TINY.B+(3*(1+s))+0],  t[TINY.B+(3*(1+s))+1],  t[TINY.B+(3*(1+s))+2], 
+                                t[TINY.B+(3*(2+s))+0],  t[TINY.B+(3*(2+s))+1],  t[TINY.B+(3*(2+s))+2], 
+                                t[TINY.T], t[TINY.L], color);
+        }
+        if ((t.length - TINY.B) > 5*3) {
+            addTriangle(k + 3,  t[TINY.B+(3*0)+0],      t[TINY.B+(3*0)+1],      t[TINY.B+(3*0)+2], 
+                                t[TINY.B+(3*(5))+0],  t[TINY.B+(3*(5))+1],  t[TINY.B+(3*(5))+2], 
+                                t[TINY.B+(3*(4))+0],  t[TINY.B+(3*(4))+1],  t[TINY.B+(3*(4))+2], 
+                                t[TINY.T], t[TINY.L], color);
+        }
+        /*
+        addTriangle(k, t.b[0].x, t.b[0].y, t.b[0].z, t.b[1].x, t.b[1].y, t.b[1].z, t.b[2].x, t.b[2].y, t.b[2].z, t[TINY.T], t[TINY.L], color);
+        addTriangle(k+1, t.b[0].x, t.b[0].y, t.b[0].z, t.b[2].x, t.b[2].y, t.b[2].z, t.b[3].x, t.b[3].y, t.b[3].z, t[TINY.T], t[TINY.L], color);
+        addTriangle(k+2, t.b[0].x, t.b[0].y, t.b[0].z, t.b[3].x, t.b[3].y, t.b[3].z, t.b[4].x, t.b[4].y, t.b[4].z, t[TINY.T], t[TINY.L], color);
 
         if (t.b.length > 5){ // for the occasional pentagon that i have to deal with
-            addTriangle(k+3, t.b[0].x, t.b[0].y, t.b[0].z, t.b[5].x, t.b[5].y, t.b[5].z, t.b[4].x, t.b[4].y, t.b[4].z, t.lat, t.lon, color);
+            addTriangle(k+3, t.b[0].x, t.b[0].y, t.b[0].z, t.b[5].x, t.b[5].y, t.b[5].z, t.b[4].x, t.b[4].y, t.b[4].z, t[TINY.T], t[TINY.L], color);
         }
+        */
     }
 
     const offsets = triangles / chunkSize;
