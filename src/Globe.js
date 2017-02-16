@@ -8,7 +8,9 @@ import {
 } from 'three';
 
 import TWEEN from 'tween.js'
-import pusherColor from 'pusher.color' // TODO: replace this one
+import { rgb, color } from 'd3-color'
+import { interpolateRgbBasis } from "d3-interpolate";
+
 import Quadtree2 from 'quadtree2'
 import Vec2 from 'vec2'
 import FontLoader from 'FontLoader'
@@ -20,6 +22,24 @@ import { default as Satellite } from './Satellite'
 import { default as Marker } from './Marker'
 import { default as Pin } from './Pin'
 import { default as SmokeProvider } from './SmokeProvider'
+
+/*
+ * e.g. load color brewer values via
+ * import { interpolateYlOrBr as interpolateScheme } from 'd3-scale-chromatic'
+ * 
+ * interpolateGnBu - blue earth
+ * interpolateOrRd - red earth etc
+ * 
+ * Below is a custom 'brown' earth
+ */ 
+const interpolateScheme = interpolateRgbBasis([ 
+    "rgb(252, 237, 177)",
+    "rgb(252, 220, 88)",
+    "rgb(252, 202, 3)",
+    "rgb(166, 133, 2)",
+    "rgb(166, 144, 58)",
+    "rgb(166, 156, 116)",
+    "rgb(77, 72, 54)"].map(color));
 
 // break geometry into
 // chunks of 21,845 triangles (3 unique vertices per triangle)
@@ -34,6 +54,12 @@ const TINY = {
     T: 2,
     L: 3,
     B: 4
+};
+
+const COLOR_ALT = {
+    R: 3.0/255.0,
+    G: 21.0/255.0,
+    B: 61.0/255.0            
 };
 
 function addInitialData() {
@@ -512,12 +538,13 @@ Globe.prototype.createParticles = function () {
     geometry.addAttribute( 'color', new BufferAttribute( colors, 3 ) );
     geometry.addAttribute( 'lng', new BufferAttribute( lng_values, 1 ) );
 
+/*  TODO: Zap
     const baseColorSet = pusherColor(this.baseColor).hueSet();
     const myColors = baseColorSet; 
     for (let i = 0; i< baseColorSet.length; i++){
         console.log('%c '+ myColors[i].rgb(), 'background:' + myColors[i].html());
     }
-
+*/
     const addTriangle = (k, ax, ay, az, bx, by, bz, cx, cy, cz, lat, lng, color) => {
         const p = k * 3;
         const i = p * 3;
@@ -562,15 +589,18 @@ Globe.prototype.createParticles = function () {
             v = Math.random();
         }
 
-        const colorIndex = Math.floor(v * (myColors.length - 1));
+        //const colorIndex = Math.floor(v * (myColors.length - 1));
 
-        const colorRGB = myColors[colorIndex].rgb();
+        // const colorRGB = myColors[colorIndex].rgb();
         const color = new Color();
 
+
         if (t[TINY.A]) {
-            color.setRGB(3.0/255.0, 21.0/255.0, 61.0/255.0);
+            color.setRGB(COLOR_ALT.R, COLOR_ALT.G, COLOR_ALT.B);
         } else {
-            color.setRGB(colorRGB[0]/255.0, colorRGB[1]/255.0, colorRGB[2]/255.0);
+            const colorRGB = rgb(interpolateScheme(v));
+
+            color.setRGB(colorRGB.r/255.0, colorRGB.g/255.0, colorRGB.b/255.0);
         }
         
         for (let s = 0; s < 3; s++) {
