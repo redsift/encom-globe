@@ -513,9 +513,9 @@ Globe.prototype.createParticles = function () {
     geometry.addAttribute( 'lng', new BufferAttribute( lng_values, 1 ) );
 
     const baseColorSet = pusherColor(this.baseColor).hueSet();
-    const myColors = []; 
+    const myColors = baseColorSet; 
     for (let i = 0; i< baseColorSet.length; i++){
-        myColors.push(baseColorSet[i].shade(Math.random()/3.0)); // tint will lighted vs shade
+        console.log('%c '+ myColors[i].rgb(), 'background:' + myColors[i].html());
     }
 
     const addTriangle = (k, ax, ay, az, bx, by, bz, cx, cy, cz, lat, lng, color) => {
